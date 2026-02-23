@@ -1,0 +1,22 @@
+<mxfile host="65bd71144e">
+    <diagram id="Cwx_LW_NnD42mqkSGQxh" name="Page-1">
+        <mxGraphModel dx="1847" dy="916" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="UC : EasyColoc" style="shape=umlFrame;whiteSpace=wrap;html=1;pointerEvents=0;recursiveResize=0;container=1;collapsible=0;width=160;" vertex="1" parent="1">
+                    <mxGeometry x="140" y="280" width="670" height="850" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="420" width="30" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="Owner" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="570" width="30" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="Member" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="680" width="30" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
