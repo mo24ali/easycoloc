@@ -19,8 +19,8 @@ return new class extends Migration
             $table->string('password');
             $table->integer('reputetion_score')->nullable();
             $table->boolean('is_banned')->nullable();
-            $table->boolean('is_admin')->default('false');
-            $table->enum('role',['owner','member'])->nullable();
+            // $table->boolean('is_admin')->default('false');
+            $table->enum('role',['member','admin']);
             $table->rememberToken();
             $table->timestamps();
         });
