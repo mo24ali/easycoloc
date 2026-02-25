@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('invitaions', function (Blueprint $table) {
             $table->id();
+            $table->string('token');
+            $table->enum('status',['accepted','pending']);
+            $table->foreignId('sender_id')->constrained('users');
+            $table->foreignId('receiver_id')->constrained('users');
+            $table->foreignId('collocation_id')->constrained('collocations');
             $table->timestamps();
         });
     }

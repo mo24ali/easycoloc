@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Expense;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Auth;
 class ExpenseController extends Controller
 {
     /**
@@ -61,5 +61,10 @@ class ExpenseController extends Controller
     public function destroy(Expense $expense)
     {
         //
+    }
+
+    public function getExpensePerUser(){
+        $expenses = Expense::where('member_id',Auth::id())->get();
+        return view('dashboard',compact('expenses'));
     }
 }

@@ -62,4 +62,19 @@ class MemberController extends Controller
     {
         //
     }
+    public function checkMemberList(){
+
+    }
+    public function addPayment(){
+
+    }
+    public function checkSold(){
+
+    }
+    public function checkExpenseList(){
+
+    }
+    public function quitColocation(){
+        
+    }
 }

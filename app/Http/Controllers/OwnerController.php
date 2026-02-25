@@ -62,4 +62,10 @@ class OwnerController extends Controller
     {
         //
     }
+    public function addCollocation() {}
+    public function cancelCollocation() {}
+
+    public function sendInvitation() {}
+    public function addMember() {}
+    public function deleteMember() {}
 }
