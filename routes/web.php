@@ -29,6 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('member')->group(function () {
 
+        // Route::get('/collocations', [InvitationController::class, 'show'])->name('invitation.show');
         Route::get('/collocations/{collocation}', [CollocationController::class, 'show'])->name('collocation.show');
         Route::get('/collocations/{collocation}/members', [CollocationController::class, 'members'])->name('collocation.members');
         Route::delete('/collocations/{collocation}/leave', [CollocationController::class, 'leave'])->name('collocation.leave');
@@ -39,7 +40,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expense.edit');
         Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expense.update');
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expense.destroy');
-
         Route::get('/collocations/{collocation}/payments', [PaymentController::class, 'index'])->name('payment.index');
         Route::post('/collocations/{collocation}/payments', [PaymentController::class, 'store'])->name('payment.store');
         Route::post('/payments/{payment}/complete', [PaymentController::class, 'complete'])->name('payment.complete');
@@ -57,7 +57,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/collocations/{collocation}/invite', [InvitationController::class, 'create'])->name('invitation.create');
         Route::post('/collocations/{collocation}/invite', [InvitationController::class, 'store'])->name('invitation.store');
     });
-
 });
 
 require __DIR__ . '/auth.php';

@@ -9,13 +9,18 @@
                 Members
                 <span class="text-base font-semibold text-[#657e9a] ml-2">({{ $members->total() }})</span>
             </h2>
+            <form method="get" action="invite">
+                <button>
+                    Add member
+                </button>
+            </form>
         </div>
     </x-slot>
 
     <div class="py-8">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            @if($members->isEmpty())
+            @if ($members->isEmpty())
                 <div class="text-center py-20">
                     <p class="text-xl font-bold text-[#1b364b] mb-2">No members yet</p>
                     <p class="text-sm text-[#657e9a]">Invite people to join this collocation.</p>
@@ -33,8 +38,9 @@
 
                     {{-- Member rows --}}
                     <ul class="divide-y divide-[#f0f4f8]">
-                        @foreach($members as $member)
-                            <li class="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-[#f9fbff] transition-colors">
+                        @foreach ($members as $member)
+                            <li
+                                class="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-[#f9fbff] transition-colors">
 
                                 {{-- Avatar + name + email --}}
                                 <div class="col-span-6 flex items-center gap-4 min-w-0">
