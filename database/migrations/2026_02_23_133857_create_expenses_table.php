@@ -17,8 +17,11 @@ return new class extends Migration
             $table->double('amount');
             $table->foreignId('member_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('collocation_id')->constrained('collocations')->cascadeOnDelete();
-            $table->foreignId('categorie_id')->constrained('categories')->cascadeOnDelete();
+            $table->foreignId('category_id')->constrained('categories')->cascadeOnDelete();
+            $table->string('description');
+            $table->string('new_category');
             $table->date('expense_date');
+            $table->date('deleted_at');
             $table->timestamps();
         });
     }

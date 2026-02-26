@@ -2,64 +2,85 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Collocation;
 use App\Models\Payment;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class PaymentController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * List payments for a collocation.
      */
-    public function index()
+    public function index(Collocation $collocation): View
     {
-        //
+        $this->authorize('view', $collocation);
+
+        $status = request('status');
+
+        $payments = $collocation->payments()
+            ->with(['payer', 'receiver'])
+            ->when($status, fn($q) => $q->where('status', $status))
+            ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('payment.index', compact('collocation', 'payments', 'status'));
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Store a new payment record (payer → receiver).
      */
-    public function create()
+    public function store(Request $request, Collocation $collocation): RedirectResponse
     {
-        //
+        $this->authorize('view', $collocation);
+
+        $validated = $request->validate([
+            'receiver_id' => ['required', 'exists:users,id', 'different:' . Auth::id()],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        Payment::create([
+            'collocation_id' => $collocation->id,
+            'payer_id' => Auth::id(),
+            'receiver_id' => $validated['receiver_id'],
+            'amount' => $validated['amount'],
+            'status' => 'pending',
+        ]);
+
+        return redirect()->route('payment.index', $collocation)
+            ->with('status', 'Payment recorded. Mark it as completed once done.');
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Mark a payment as completed.
      */
-    public function store(Request $request)
+    public function complete(Payment $payment): RedirectResponse
     {
-        //
+        // Only the payer can confirm completion
+        if ($payment->payer_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $payment->update(['status' => 'completed', 'paid_at' => now()]);
+
+        return redirect()->back()
+            ->with('status', "Payment of €{$payment->amount} marked as completed.");
     }
 
     /**
-     * Display the specified resource.
+     * Cancel a pending payment.
      */
-    public function show(Payment $payment)
+    public function cancel(Payment $payment): RedirectResponse
     {
-        //
-    }
+        if ($payment->payer_id !== Auth::id()) {
+            abort(403);
+        }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Payment $payment)
-    {
-        //
-    }
+        $payment->update(['status' => 'cancelled']);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Payment $payment)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Payment $payment)
-    {
-        //
+        return redirect()->back()->with('status', 'Payment cancelled.');
     }
 }

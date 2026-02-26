@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
+<nav x-data="{ open: false }" class="bg-white border-b border-[#dae2ec]">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -6,9 +6,8 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}">
-                        <div
-                            class="w-24 h-24 bg-white/30 backdrop-blur-xl rounded-3xl flex items-center justify-center mx-auto border border-white/40 shadow-2xl">
-                            <span class="text-black text-5xl font-black italic tracking-tighter">E</span>
+                        <div class="w-10 h-10 bg-[#2563eb] rounded-xl flex items-center justify-center shadow-sm">
+                            <span class="text-white text-xl font-black italic tracking-tighter">E</span>
                         </div>
                     </a>
                 </div>
@@ -18,12 +17,20 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('add.group')" :active="request()->routeIs('add.group')">
-                        {{ __('Add Group') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('add.collocation')" :active="request()->routeIs('add.collocation')">
-                        {{ __('Add Collocation') }}
-                    </x-nav-link>
+
+                    {{-- Member + Owner routes --}}
+                    @if(Auth::user()->isMember() || Auth::user()->isOwner())
+                        <x-nav-link :href="route('collocation.index')" :active="request()->routeIs('collocation.*')">
+                            {{ __('My Collocation') }}
+                        </x-nav-link>
+                    @endif
+
+                    {{-- Owner-only route --}}
+                    @if(Auth::user()->isOwner())
+                        <x-nav-link :href="route('collocation.create')" :active="request()->routeIs('collocation.create')">
+                            {{ __('New Collocation') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -33,9 +40,17 @@
                     <x-slot name="trigger">
                         <button
                             class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div>{{ Auth::user()->name }}</div>
+                            <div class="mr-2">{{ Auth::user()->name }}</div>
+                            {{-- Role badge --}}
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full
+                                @if(Auth::user()->isOwner()) bg-[#2563eb] text-white
+                                @elseif(Auth::user()->isMember()) bg-[#f4f9ff] text-[#2563eb] border border-[#2563eb]/20
+                                @else bg-gray-100 text-gray-500
+                                @endif capitalize">
+                                {{ Auth::user()->role }}
+                            </span>
 
-                            <div class="ms-1">
+                            <div class="ms-2">
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg"
                                     viewBox="0 0 20 20">
                                     <path fill-rule="evenodd"
@@ -55,8 +70,7 @@
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
 
-                            <x-dropdown-link :href="route('logout')"
-                                onclick="event.preventDefault();
+                            <x-dropdown-link :href="route('logout')" onclick="event.preventDefault();
                                                 this.closest('form').submit();">
                                 {{ __('Log Out') }}
                             </x-dropdown-link>
@@ -87,12 +101,19 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('add.group')" :active="request()->routeIs('add.group')">
-                {{ __('Add Group') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('add.collocation')" :active="request()->routeIs('add.collocation')">
-                {{ __('Add Collocation') }}
-            </x-responsive-nav-link>
+
+            @if(Auth::user()->isMember() || Auth::user()->isOwner())
+                <x-responsive-nav-link :href="route('collocation.index')" :active="request()->routeIs('collocation.*')">
+                    {{ __('My Collocation') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @if(Auth::user()->isOwner())
+                <x-responsive-nav-link :href="route('collocation.create')"
+                    :active="request()->routeIs('collocation.create')">
+                    {{ __('New Collocation') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->
@@ -100,6 +121,10 @@
             <div class="px-4">
                 <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
                 <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
+                <span
+                    class="mt-1 inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-[#f4f9ff] text-[#2563eb] border border-[#2563eb]/20 capitalize">
+                    {{ Auth::user()->role }}
+                </span>
             </div>
 
             <div class="mt-3 space-y-1">
@@ -111,8 +136,7 @@
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
 
-                    <x-responsive-nav-link :href="route('logout')"
-                        onclick="event.preventDefault();
+                    <x-responsive-nav-link :href="route('logout')" onclick="event.preventDefault();
                                         this.closest('form').submit();">
                         {{ __('Log Out') }}
                     </x-responsive-nav-link>

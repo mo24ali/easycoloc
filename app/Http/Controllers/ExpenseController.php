@@ -2,69 +2,148 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
+use App\Models\Collocation;
 use App\Models\Expense;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
+
 class ExpenseController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * List expenses for a collocation (member+ required — enforced by route).
      */
-    public function index()
+    public function index(Collocation $collocation): View
     {
-        //
+        $this->authorize('view', $collocation);
+
+        $categoryId = request('category');
+
+        $expenses = $collocation->expenses()
+            ->with(['member', 'category'])
+            ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+            ->orderByDesc('expense_date')
+            ->paginate(20)
+            ->withQueryString();
+
+        $categories = Category::orderBy('name')->get();
+
+        return view('expense.index', compact('collocation', 'expenses', 'categories', 'categoryId'));
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Show the expense creation form.
      */
-    public function create()
+    public function create(Collocation $collocation): View
     {
-        //
+        $this->authorize('view', $collocation);
+        $categories = Category::orderBy('name')->get();
+        return view('expense.create', compact('collocation', 'categories'));
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a new expense.
      */
-    public function store(Request $request)
+    public function store(Request $request, Collocation $collocation): RedirectResponse
     {
-        //
+        // dd($request->all());
+
+    $this->authorize('view', $collocation);
+
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'title' => ['required','string'],
+            'category_id' => ['required'],
+            'new_category' => ['required_if:category_id,new', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'expense_date' => ['required', 'date'],
+        ]);
+
+        if ($request->category_id === 'new') {
+            $category = Category::firstOrCreate([
+                'name' => $request->new_category
+            ]);
+            $validated['category_id'] = $category->id;
+        } else {
+            // Cast to integer just to be safe
+            $validated['category_id'] = (int) $request->category_id;
+        }
+
+        // Create the expense
+        $collocation->expenses()->create([
+            ...$validated,
+            'member_id' => Auth::id(),
+        ]);
+        return redirect()->route('expense.index', $collocation)
+            ->with('status', 'Expense added successfully.');
     }
 
     /**
-     * Display the specified resource.
+     * Show the edit form (author or collocation owner).
      */
-    public function show(Expense $expense)
+    public function edit(Expense $expense): View
     {
-        //
+        $this->authorize('update', $expense);
+        $categories = Category::orderBy('name')->get();
+        return view('expense.edit', compact('expense', 'categories'));
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Update an expense.
      */
-    public function edit(Expense $expense)
+    public function update(Request $request, Expense $expense): RedirectResponse
     {
-        //
+        $this->authorize('update', $expense);
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'category_id' => ['required', 'exists:categories,id'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'expense_date' => ['required', 'date'],
+        ]);
+
+        $expense->update($validated);
+
+        return redirect()->route('expense.index', $expense->collocation_id)
+            ->with('status', 'Expense updated.');
     }
 
     /**
-     * Update the specified resource in storage.
+     * Soft-delete an expense (author or collocation owner).
      */
-    public function update(Request $request, Expense $expense)
+    public function destroy(Expense $expense): RedirectResponse
     {
-        //
+        $this->authorize('delete', $expense);
+        $collocationId = $expense->collocation_id;
+        $expense->delete();
+
+        return redirect()->route('expense.index', $collocationId)
+            ->with('status', 'Expense deleted.');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Dashboard: user's recent expenses across all their collocations.
      */
-    public function destroy(Expense $expense)
+    public function getExpensePerUser(): View
     {
-        //
-    }
+        $user = Auth::user();
+        $collocations = collect();
 
-    public function getExpensePerUser(){
-        $expenses = Expense::where('member_id',Auth::id())->get();
-        return view('dashboard',compact('expenses'));
+        if ($user->isOwner()) {
+            $collocations = $user->ownedCollocations()->active()->withCount('members')->get();
+        } elseif ($user->isMember()) {
+            $collocations = $user->collocations()->active()->withCount('members')->get();
+        }
+
+        $recentExpenses = Expense::with(['collocation', 'category'])
+            ->where('member_id', $user->id)
+            ->orderByDesc('expense_date')
+            ->take(5)
+            ->get();
+
+        return view('dashboard', compact('collocations', 'recentExpenses'));
     }
 }

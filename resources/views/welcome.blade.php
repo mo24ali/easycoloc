@@ -73,9 +73,9 @@
             <div class="relative z-10 text-center space-y-6">
                 <div
                     class="w-24 h-24 bg-white/30 backdrop-blur-xl rounded-3xl flex items-center justify-center mx-auto border border-white/40 shadow-2xl">
-                    <span class="text-white text-5xl font-black italic tracking-tighter">E</span>
+                    <span class="text-black text-5xl font-black italic tracking-tighter">E</span>
                 </div>
-                <h2 class="text-4xl font-extrabold text-white tracking-tight leading-tight">
+                <h2 class="text-4xl font-extrabold gradient-text tracking-tight leading-tight">
                     Split bills,<br>
                     <span class="text-[#2563eb]">no stress.</span>
                 </h2>
@@ -96,7 +96,7 @@
                 <!-- Mobile Logo -->
                 <div class="lg:hidden mb-12">
                     <div class="w-12 h-12 bg-[#2563eb] rounded-xl flex items-center justify-center">
-                        <span class="text-white text-2xl font-black italic">E</span>
+                        <span class="text-black text-2xl font-black italic">E</span>
                     </div>
                 </div>
 
