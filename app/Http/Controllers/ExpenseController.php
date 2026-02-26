@@ -48,34 +48,44 @@ class ExpenseController extends Controller
      */
     public function store(Request $request, Collocation $collocation): RedirectResponse
     {
-        // dd($request->all());
-
-    $this->authorize('view', $collocation);
+        $this->authorize('view', $collocation);
 
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'title' => ['required','string'],
-            'category_id' => ['required'],
+            'title' => ['required', 'string', 'max:255'],
+            'category_id' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    if (empty($value)) {
+                        $fail('Please select a category.');
+                    } elseif ($value !== 'new') {
+                        // It should be a numeric ID that exists
+                        if (!is_numeric($value) || !Category::where('id', (int) $value)->exists()) {
+                            $fail('The selected category is invalid.');
+                        }
+                    }
+                },
+            ],
             'new_category' => ['required_if:category_id,new', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:500'],
             'expense_date' => ['required', 'date'],
         ]);
 
-        if ($request->category_id === 'new') {
+        if ($validated['category_id'] === 'new') {
             $category = Category::firstOrCreate([
                 'name' => $request->new_category
             ]);
             $validated['category_id'] = $category->id;
         } else {
-            // Cast to integer just to be safe
-            $validated['category_id'] = (int) $request->category_id;
+            $validated['category_id'] = (int) $validated['category_id'];
         }
 
-        // Create the expense
         $collocation->expenses()->create([
             ...$validated,
             'member_id' => Auth::id(),
         ]);
+
         return redirect()->route('expense.index', $collocation)
             ->with('status', 'Expense added successfully.');
     }
@@ -100,7 +110,7 @@ class ExpenseController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'category_id' => ['required', 'exists:categories,id'],
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
             'description' => ['nullable', 'string', 'max:500'],
             'expense_date' => ['required', 'date'],
         ]);
