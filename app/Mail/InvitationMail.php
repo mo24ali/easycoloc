@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Invitation;
+use Faker\Provider\Address;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
