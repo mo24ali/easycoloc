@@ -30,7 +30,7 @@
 
                         {{-- Amount --}}
                         <div class="mb-5">
-                            <x-input-label for="amount" :value="__('Amount (€)')" class="font-bold text-[#1b364b]" />
+                            <x-input-label for="amount" :value="__('Amount (DH)')" class="font-bold text-[#1b364b]" />
                             <x-text-input id="amount" name="amount" type="number" step="0.01" min="0.01"
                                 class="mt-2 block w-full rounded-2xl border-[#dae2ec] focus:ring-[#2563eb] focus:border-[#2563eb]"
                                 :value="old('amount')" placeholder="0.00" required autofocus />
@@ -38,36 +38,15 @@
                         </div>
 
                         {{-- Category --}}
-                        {{-- Category --}}
+
                         <div class="mb-5">
                             <x-input-label for="category_id" :value="__('Category')" class="font-bold text-[#1b364b]" />
 
-                            @if ($categories->isNotEmpty())
-                                <select id="category_id" name="category_id" required
-                                    class="mt-2 block w-full rounded-2xl border-[#dae2ec] focus:ring-[#2563eb] focus:border-[#2563eb] text-[#142c3e] py-3 px-4">
-                                    <option value="" disabled selected>Select a category…</option>
-                                    @foreach ($categories as $cat)
-                                        <option value="{{ $cat->id }}" @selected(old('category_id') == $cat->id)>
-                                            {{ $cat->name }}
-                                        </option>
-                                    @endforeach
-                                    <option value="new" @selected(old('category_id') == 'new')>Add new category…</option>
-                                </select>
-
-                                {{-- Input for new category only if "new" is selected --}}
-                                <input type="text" id="new_category" name="new_category"
-                                    placeholder="Enter a new category…"
-                                    class="mt-2 block w-full rounded-2xl border-[#dae2ec] focus:ring-[#2563eb] focus:border-[#2563eb] text-[#142c3e] py-3 px-4 hidden"
-                                    value="{{ old('new_category') }}">
-                            @else
-                                {{-- No categories yet, force user to type one --}}
-                                <input type="text" id="new_category" name="new_category"
+                           <input type="text" id="new_category" name="new_category"
                                     placeholder="Enter a category…" required
                                     class="mt-2 block w-full rounded-2xl border-[#dae2ec] focus:ring-[#2563eb] focus:border-[#2563eb] text-[#142c3e] py-3 px-4"
                                     value="{{ old('new_category') }}">
                                 <input type="hidden" name="category_id" value="new">
-                            @endif
-
                             <x-input-error class="mt-2" :messages="$errors->get('category_id')" />
                             <x-input-error class="mt-2" :messages="$errors->get('new_category')" />
                         </div>

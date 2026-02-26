@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Collocation extends Model
 {
@@ -64,48 +65,102 @@ class Collocation extends Model
     }
 
     /**
-     * Minimal-transaction reimbursement suggestions.
+     * Get detailed expense share breakdown.
+     * Returns each user's shares and who they owe money to.
+     * Returns [{user_id, user_name, shares: [{share_id, amount, receiver_id, receiver_name, expense_id, expense_title, payed}]}]
+     */
+    public function getExpenseShareDetails(): array
+    {
+        $expenseShares = DB::table('expense_share')
+            ->join('expenses', 'expense_share.expense_id', '=', 'expenses.id')
+            ->join('users as payer', 'expense_share.payer_id', '=', 'payer.id')
+            ->join('users as receiver', 'expenses.member_id', '=', 'receiver.id')
+            ->where('expenses.collocation_id', $this->id)
+            ->select(
+                'expense_share.id as share_id',
+                'expense_share.payer_id',
+                'payer.name as payer_name',
+                'expense_share.share_per_user as amount',
+                'expenses.member_id as receiver_id',
+                'receiver.name as receiver_name',
+                'expenses.id as expense_id',
+                'expenses.title as expense_title',
+                'expense_share.payed'
+            )
+            ->orderBy('payer.name')
+            ->get();
+
+        // Group by payer
+        $result = [];
+        foreach ($expenseShares->groupBy('payer_id') as $payerId => $shares) {
+            $payerName = $shares->first()->payer_name;
+            $result[] = [
+                'user_id' => $payerId,
+                'user_name' => $payerName,
+                'shares' => $shares->map(fn($share) => [
+                    'share_id' => $share->share_id,
+                    'amount' => (float) $share->amount,
+                    'receiver_id' => $share->receiver_id,
+                    'receiver_name' => $share->receiver_name,
+                    'expense_id' => $share->expense_id,
+                    'expense_title' => $share->expense_title,
+                    'payed' => (bool) $share->payed,
+                ])->toArray(),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Minimal-transaction reimbursement suggestions based on expense shares.
      * Returns [{payer_id, payer_name, receiver_id, receiver_name, amount}]
      */
     public function getReimbursementSuggestions(): array
     {
-        $activeMembers = $this->members()->wherePivotNull('left_at')->get();
+        // Get all unpaid expense shares
+        $expenseShares = DB::table('expense_share')
+            ->join('expenses', 'expense_share.expense_id', '=', 'expenses.id')
+            ->where('expenses.collocation_id', $this->id)
+            ->where('expense_share.payed', false)
+            ->select(
+                'expense_share.payer_id',
+                'expenses.member_id as receiver_id',
+                'expense_share.share_per_user as amount'
+            )
+            ->get();
 
-        $debtors = collect(); // positive balance → owes
-        $creditors = collect(); // negative balance → owed
-
-        foreach ($activeMembers as $member) {
-            $balance = $this->getMemberBalance($member->id);
-            if ($balance > 0.00) {
-                $debtors->put($member->id, ['balance' => $balance, 'name' => $member->name]);
-            } elseif ($balance < 0.00) {
-                $creditors->put($member->id, ['balance' => abs($balance), 'name' => $member->name]);
+        // Aggregate debts: payer_id → receiver_id → total amount
+        $debts = collect();
+        foreach ($expenseShares as $share) {
+            $key = $share->payer_id . '_' . $share->receiver_id;
+            if (!$debts->has($key)) {
+                $debts->put($key, [
+                    'payer_id' => $share->payer_id,
+                    'receiver_id' => $share->receiver_id,
+                    'amount' => 0,
+                ]);
             }
+            $debts[$key]['amount'] += (float) $share->amount;
         }
 
+        // Add user names
+        $users = $this->members()->wherePivotNull('left_at')->get()->keyBy('id');
         $transactions = [];
 
-        while ($debtors->isNotEmpty() && $creditors->isNotEmpty()) {
-            $debtorId = $debtors->keys()->first();
-            $creditorId = $creditors->keys()->first();
-            $amount = min($debtors[$debtorId]['balance'], $creditors[$creditorId]['balance']);
-            $amount = round($amount, 2);
+        foreach ($debts as $debt) {
+            $payer = $users->get($debt['payer_id']);
+            $receiver = $users->get($debt['receiver_id']);
 
-            $transactions[] = [
-                'payer_id' => $debtorId,
-                'payer_name' => $debtors[$debtorId]['name'],
-                'receiver_id' => $creditorId,
-                'receiver_name' => $creditors[$creditorId]['name'],
-                'amount' => $amount,
-            ];
-
-            $debtors[$debtorId]['balance'] = round($debtors[$debtorId]['balance'] - $amount, 2);
-            $creditors[$creditorId]['balance'] = round($creditors[$creditorId]['balance'] - $amount, 2);
-
-            if ($debtors[$debtorId]['balance'] <= 0)
-                $debtors->forget($debtorId);
-            if ($creditors[$creditorId]['balance'] <= 0)
-                $creditors->forget($creditorId);
+            if ($payer && $receiver) {
+                $transactions[] = [
+                    'payer_id' => $debt['payer_id'],
+                    'payer_name' => $payer->name,
+                    'receiver_id' => $debt['receiver_id'],
+                    'receiver_name' => $receiver->name,
+                    'amount' => round($debt['amount'], 2),
+                ];
+            }
         }
 
         return $transactions;

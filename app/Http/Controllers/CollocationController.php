@@ -67,7 +67,11 @@ class CollocationController extends Controller
     {
         $this->authorize('view', $collocation);
         $collocation->load(['owner', 'members']);
-        return view('collocation.show', compact('collocation'));
+
+        // Get detailed expense share information
+        $expenseShares = $collocation->getExpenseShareDetails();
+
+        return view('collocation.show', compact('collocation', 'expenseShares'));
     }
 
     /**

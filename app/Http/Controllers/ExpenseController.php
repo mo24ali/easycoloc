@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Collocation;
 use App\Models\Expense;
+use App\Models\ExpenseShare;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ExpenseController extends Controller
@@ -81,10 +83,28 @@ class ExpenseController extends Controller
             $validated['category_id'] = (int) $validated['category_id'];
         }
 
-        $collocation->expenses()->create([
+        // Create the expense
+        $expense = $collocation->expenses()->create([
             ...$validated,
             'member_id' => Auth::id(),
         ]);
+
+        // Get all active members in the collocation and split the expense
+        $activeMembers = $collocation->members()->wherePivotNull('left_at')->get();
+
+        if ($activeMembers->count() > 0) {
+            $sharePerUser = $expense->amount / $activeMembers->count();
+
+            // Create expense share record for each member
+            foreach ($activeMembers as $member) {
+                ExpenseShare::create([
+                    'expense_id' => $expense->id,
+                    'payer_id' => $member->id,
+                    'share_per_user' => $sharePerUser,
+                    'payed' => false,
+                ]);
+            }
+        }
 
         return redirect()->route('expense.index', $collocation)
             ->with('status', 'Expense added successfully.');

@@ -35,7 +35,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
             {{-- Flash status --}}
             @if(session('status'))
@@ -45,25 +45,69 @@
                 </div>
             @endif
 
-            {{-- Info card --}}
-            <div class="bg-white rounded-2xl border border-[#dae2ec] shadow-sm p-6 grid sm:grid-cols-2 gap-6">
-                <div>
-                    <p class="text-xs text-[#657e9a] font-semibold uppercase tracking-wider mb-1">Owner</p>
-                    <p class="text-base font-bold text-[#142c3e]">{{ $collocation->owner->name }}</p>
-                    <p class="text-sm text-[#657e9a]">{{ $collocation->owner->email }}</p>
-                </div>
-                <div>
-                    <p class="text-xs text-[#657e9a] font-semibold uppercase tracking-wider mb-1">Created</p>
-                    <p class="text-base font-bold text-[#142c3e]">{{ $collocation->created_at->format('d M Y') }}</p>
-                    <p class="text-sm text-[#657e9a]">{{ $collocation->created_at->diffForHumans() }}</p>
-                </div>
-                @if($collocation->isCancelled())
-                    <div class="sm:col-span-2">
-                        <p class="text-xs text-red-400 font-semibold uppercase tracking-wider mb-1">Cancelled on</p>
-                        <p class="text-base font-bold text-red-500">{{ $collocation->cancelled_at->format('d M Y, H:i') }}
-                        </p>
+            {{-- Top grid: Expenses left, Who owes whom right --}}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {{-- Expenses Section --}}
+                <div class="bg-white rounded-2xl border border-[#dae2ec] shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-extrabold text-[#1b364b]">Expenses</h3>
+                        @can('update', $collocation)
+                            <a href="{{ route('expense.create', $collocation) }}"
+                               class="text-sm font-bold text-white bg-[#2563eb] px-4 py-2 rounded-full hover:bg-[#1e4db7] transition-all">
+                                + Add Expense
+                            </a>
+                        @endcan
                     </div>
-                @endif
+                    @if($collocation->expenses->isEmpty())
+                        <p class="text-sm text-[#657e9a]">No expenses added yet.</p>
+                    @else
+                        <ul class="space-y-3">
+                            @foreach($collocation->expenses as $expense)
+                                <li class="flex justify-between items-center border-b border-[#e0e5eb] py-2">
+                                    <div>
+                                        <p class="text-sm font-bold text-[#142c3e]">{{ $expense->title }}</p>
+                                        <p class="text-xs text-[#657e9a]">{{ $expense->category->name ?? 'No Category' }}</p>
+                                    </div>
+                                    <span class="text-sm font-bold text-[#2563eb]">${{ $expense->amount }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+
+                {{-- Who owes whom Section --}}
+                <div class="bg-white rounded-2xl border border-[#dae2ec] shadow-sm p-6">
+                    <h3 class="text-lg font-extrabold text-[#1b364b] mb-4">Who owes whom</h3>
+                    @if(empty($expenseShares))
+                        <p class="text-sm text-[#657e9a]">No expenses shared yet.</p>
+                    @else
+                        <div class="space-y-4">
+                            @foreach($expenseShares as $userShare)
+                                <div class="border border-[#e0e5eb] rounded-lg p-4">
+                                    <p class="text-sm font-bold text-[#142c3e] mb-3">{{ $userShare['user_name'] }}</p>
+                                    <ul class="space-y-2 ml-2">
+                                        @foreach($userShare['shares'] as $share)
+                                            <li class="text-xs text-[#657e9a] border-l-2 border-[#2563eb] pl-3">
+                                                <div class="flex justify-between items-start">
+                                                    <div class="flex-1">
+                                                        <p class="font-semibold text-[#142c3e]">owes {{ $share['receiver_name'] }}</p>
+                                                        <p class="text-[#657e9a]">{{ $share['expense_title'] }}</p>
+                                                    </div>
+                                                    <span class="font-bold text-[#2563eb] ml-2 shrink-0">${{ number_format($share['amount'], 2) }}</span>
+                                                </div>
+                                                @if($share['payed'])
+                                                    <span class="inline-block text-[10px] bg-green-50 text-green-600 px-2 py-1 rounded mt-1 border border-green-200">✓ Paid</span>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
             </div>
 
             {{-- Members preview --}}
