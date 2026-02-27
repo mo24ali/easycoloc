@@ -20,8 +20,9 @@ class CollocationPolicy
      */
     public function view(User $user, Collocation $collocation): bool
     {
-        return $user->id === $collocation->owner_id
-            || $collocation->members()->where('user_id', $user->id)->exists();
+        return $user->isAdmin()
+            || $user->id === $collocation->owner_id
+            || $collocation->members()->where('user_id', $user->id)->whereNull('left_at')->exists();
     }
 
     /**
@@ -29,7 +30,7 @@ class CollocationPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isOwner();
+        return $user->isOwner() || $user->isAdmin();
     }
 
     /**
@@ -37,7 +38,7 @@ class CollocationPolicy
      */
     public function update(User $user, Collocation $collocation): bool
     {
-        return $user->id === $collocation->owner_id;
+        return $user->id === $collocation->owner_id || $user->isAdmin();
     }
 
     /**
@@ -46,7 +47,7 @@ class CollocationPolicy
      */
     public function cancel(User $user, Collocation $collocation): bool
     {
-        return $user->id === $collocation->owner_id && !$collocation->isCancelled();
+        return ($user->id === $collocation->owner_id || $user->isAdmin()) && !$collocation->isCancelled();
     }
 
     /**
@@ -54,8 +55,9 @@ class CollocationPolicy
      */
     public function viewMembers(User $user, Collocation $collocation): bool
     {
-        return $user->id === $collocation->owner_id
-            || $collocation->members()->where('user_id', $user->id)->exists();
+        return $user->isAdmin()
+            || $user->id === $collocation->owner_id
+            || $collocation->members()->where('user_id', $user->id)->whereNull('left_at')->exists();
     }
 
     /**
@@ -63,6 +65,6 @@ class CollocationPolicy
      */
     public function delete(User $user, Collocation $collocation): bool
     {
-        return $user->id === $collocation->owner_id;
+        return $user->id === $collocation->owner_id || $user->isAdmin();
     }
 }

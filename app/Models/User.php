@@ -61,17 +61,21 @@ class User extends Authenticatable
 
     public function isOwner(): bool
     {
-        return $this->role === 'owner';
+        return $this->ownedCollocations()->exists();
     }
 
     public function isMember(): bool
     {
-        return $this->role === 'member';
+        return $this->collocations()->wherePivotNull('left_at')->exists();
     }
 
     public function isUser(): bool
     {
-        return $this->role === 'user';
+        return !$this->isAdmin() && !$this->isOwner() && !$this->isMember();
+    }
+    public function isNormalUser(): bool
+    {
+        return $this->role === 'user' ;
     }
 
     // ─── Relationships ────────────────────────────────────────────────────────

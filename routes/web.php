@@ -41,10 +41,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expense.edit');
         Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expense.update');
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expense.destroy');
+
         Route::get('/collocations/{collocation}/payments', [PaymentController::class, 'index'])->name('payment.index');
+        Route::get('/collocations/{collocation}/payments/create', [PaymentController::class, 'create'])->name('payment.create');
         Route::post('/collocations/{collocation}/payments', [PaymentController::class, 'store'])->name('payment.store');
+        Route::post('/payments/{payment}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
         Route::post('/payments/{payment}/complete', [PaymentController::class, 'complete'])->name('payment.complete');
+        Route::post('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payment.reject');
         Route::post('/payments/{payment}/cancel', [PaymentController::class, 'cancel'])->name('payment.cancel');
+
+        // Direct share payment — marks an individual expense_share as paid
+        Route::post('/expense-shares/{share}/pay', [ExpenseController::class, 'markSharePaid'])->name('share.pay');
     });
 
     Route::middleware('admin')->group(function () {
@@ -61,6 +68,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/collocations/{collocation}/cancel', [CollocationController::class, 'cancel'])->name('collocation.cancel');
 
         Route::delete('/collocations/{collocation}/members/{user}', [CollocationController::class, 'removeMember'])->name('collocation.removeMember');
+        Route::post('/collocations/{collocation}/members/{user}/pass-ownership', [CollocationController::class, 'passOwnership'])->name('collocation.passOwnership');
 
         Route::get('/collocations/{collocation}/invite', [InvitationController::class, 'create'])->name('invitation.create');
         Route::post('/collocations/{collocation}/invite', [InvitationController::class, 'store'])->name('invitation.store');

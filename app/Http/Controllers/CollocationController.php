@@ -2,11 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreCollocationRequest;
+use App\Http\Requests\UpdateCollocationRequest;
 use App\Models\Collocation;
 use App\Models\User;
+use App\Services\MembershipService;
+use App\Services\CollocationCleanupService;
+use App\Services\DebtOptimizationService;
+use App\Services\BalanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class CollocationController extends Controller
@@ -23,16 +30,20 @@ class CollocationController extends Controller
             ->select(['collocations.*'])
             ->withCount('members');
 
-        $memberQuery = Collocation::whereHas('members', function ($query) use ($user) {
-            $query->where('user_id', $user->id)->whereNull('left_at');
+
+        // Get the member who are in the collocation and havent left yet
+        $memberQuery = Collocation::whereHas('members', function ($query) use ($user): void {
+            $query->where('user_id', $user->id)->whereNull(columns: 'left_at');
         })
             ->select(['collocations.*'])
             ->withCount('members');
 
+        // Used the union to get the collocation wethr if the current user is the owner / or a member
         $collocations = $ownedQuery->union($memberQuery)
             ->orderByDesc('created_at')
             ->paginate(9);
 
+        //render the view with the result
         return view('collocation.index', compact('collocations'));
     }
 
@@ -47,24 +58,29 @@ class CollocationController extends Controller
     /**
      * Store a newly created collocation.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreCollocationRequest $request, MembershipService $membershipService): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         $user = Auth::user();
 
-        // Promote user to owner if they are still a regular user
+        $membershipService->validateCanCreateCollocation($user);
+
         if ($user->isUser()) {
             $user->update(['role' => 'owner']);
-            $user->refresh(); // Refresh the user object to reflect the database change
+            $user->refresh();
         }
 
         $collocation = Collocation::create([
             'name' => $validated['name'],
             'owner_id' => $user->id,
             'status' => 'active',
+        ]);
+
+        // Add owner as a member of the collocation
+        $collocation->members()->attach($user->id, [
+            'role' => 'owner',
+            'joined_at' => now(),
         ]);
 
         return redirect()->route('collocation.show', $collocation)
@@ -74,15 +90,18 @@ class CollocationController extends Controller
     /**
      * Display a specific collocation.
      */
-    public function show(Collocation $collocation): View
+    public function show(Collocation $collocation, DebtOptimizationService $debtOptimizationService, BalanceService $balanceService): View
     {
         $this->authorize('view', $collocation);
-        $collocation->load(['owner', 'members']);
+        // $collocation->load(['owner', 'members
 
         // Get detailed expense share information
         $expenseShares = $collocation->getExpenseShareDetails();
 
-        return view('collocation.show', compact('collocation', 'expenseShares'));
+        // ✅ Get optimized transaction suggestions using the greedy algorithm
+        $optimizedTransactions = $debtOptimizationService->getOptimizedTransactions($collocation, $balanceService);
+
+        return view('collocation.show', compact('collocation', 'expenseShares', 'optimizedTransactions'));
     }
 
     /**
@@ -97,15 +116,9 @@ class CollocationController extends Controller
     /**
      * Update the collocation name / status.
      */
-    public function update(Request $request, Collocation $collocation): RedirectResponse
+    public function update(UpdateCollocationRequest $request, Collocation $collocation): RedirectResponse
     {
-        $this->authorize('update', $collocation);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'status' => ['required', 'in:active,inactive'],
-        ]);
-
+        $validated = $request->validated();
         $collocation->update($validated);
 
         return redirect()->route('collocation.show', $collocation)
@@ -142,7 +155,7 @@ class CollocationController extends Controller
     /**
      * Remove a specific member from the collocation (owner only).
      */
-    public function removeMember(Collocation $collocation, User $user): RedirectResponse
+    public function removeMember(Collocation $collocation, User $user, CollocationCleanupService $cleanupService): RedirectResponse
     {
         $this->authorize('update', $collocation);
 
@@ -150,36 +163,96 @@ class CollocationController extends Controller
             return back()->withErrors(['member' => 'Cannot remove the collocation owner.']);
         }
 
-        $collocation->members()->updateExistingPivot($user->id, ['left_at' => now()]);
+        $details = $cleanupService->ownerRemovesMember($collocation, $user);
 
         return redirect()->route('collocation.members', $collocation)
-            ->with('status', "{$user->name} has been removed from the collocation.");
+            ->with('status', $details['message']);
+    }
+
+    /**
+     * Pass ownership from current owner to another member.
+     */
+    public function passOwnership(Collocation $collocation, User $user): RedirectResponse
+    {
+        $this->authorize('update', $collocation);
+
+        if ($collocation->owner_id === $user->id) {
+            return back()->withErrors(['member' => 'This member is already the owner.']);
+        }
+
+        $isMember = $collocation->members()->where('users.id', $user->id)->wherePivotNull('left_at')->exists();
+        if (!$isMember) {
+            return back()->withErrors(['member' => 'The user must be an active member of this collocation to receive ownership.']);
+        }
+
+        $oldOwnerId = $collocation->owner_id;
+        $oldOwner = User::find($oldOwnerId);
+
+        // 1. Update Collocation owner
+        $collocation->update(['owner_id' => $user->id]);
+
+        // 2. Update new owner pivot role
+        $collocation->members()->updateExistingPivot($user->id, [
+            'role' => 'owner'
+        ]);
+
+        // 3. Update old owner pivot role
+        if ($oldOwner) {
+            $collocation->members()->updateExistingPivot($oldOwnerId, [
+                'role' => 'member'
+            ]);
+
+            // 4. Update old owner User model role if they don't own any other collocations
+            if (!$oldOwner->ownedCollocations()->exists() && !$oldOwner->isAdmin()) {
+                $oldOwner->update(['role' => 'member']);
+            }
+        }
+
+        // 5. Update new owner User model role
+        if (!$user->isAdmin()) {
+            $user->update(['role' => 'owner']);
+        }
+
+        return redirect()->route('collocation.members', $collocation)
+            ->with('status', "Ownership transferred to {$user->name} successfully.");
     }
 
     /**
      * Allow the authenticated member to leave the collocation.
      */
-    public function leave(Collocation $collocation): RedirectResponse
+    public function leave(Collocation $collocation, CollocationCleanupService $cleanupService): RedirectResponse
     {
         $user = Auth::user();
 
-        // Owner cannot leave while other members are still present
-        if ($collocation->owner_id === $user->id) {
-            $otherMembers = $collocation->members()
-                ->wherePivotNull('left_at')
-                ->where('users.id', '!=', $user->id)
-                ->count();
-
-            if ($otherMembers > 0) {
-                return back()->withErrors([
-                    'leave' => 'You cannot leave while there are still members. Remove them first or transfer ownership.',
-                ]);
-            }
+        // Owner cannot leave at all, ownership must be transferred first
+        if ($collocation->owner_id === $user->id && !$user->isAdmin()) {
+            return back()->withErrors([
+                'leave' => 'You cannot leave while you are the owner. Transfer ownership first.',
+            ]);
         }
 
-        $collocation->members()->updateExistingPivot($user->id, ['left_at' => now()]);
+        // Admin override check: if user is admin and is the owner, they can leave but they should transfer ownership or cancel really.
+        // Actually, if an admin becomes owner, the constraint applies. 
+        if ($collocation->owner_id === $user->id) {
+            return back()->withErrors([
+                'leave' => 'You cannot leave while you are the owner. Transfer ownership or cancel the collocation.',
+            ]);
+        }
+
+        $details = $cleanupService->memberLeaves($collocation, $user);
+
+        // If the user has no remaining active collocations, reset their role to 'user'
+        // so they can join or create a new collocation
+        $hasOtherCollocations = $user->collocations()
+            ->wherePivotNull('left_at')
+            ->where('collocations.status', 'active')
+            ->exists();
+
+        if (!$hasOtherCollocations) {
+            $user->update(['role' => 'user']);
+        }
 
         return redirect()->route('dashboard')
-            ->with('status', "You have left {$collocation->name}.");
+            ->with('status', "You have left {$collocation->name}. (Reputation: {$details['reputation_change']})");
     }
 }

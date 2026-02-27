@@ -395,15 +395,15 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="236" value="collocation_user" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="-2130" y="-390" width="160" height="88" as="geometry">
+                    <mxGeometry x="-2130" y="-390" width="160" height="98" as="geometry">
                         <mxRectangle x="-360" y="634" width="100" height="30" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="237" value="- id : int&lt;div&gt;- joined_at : datetime&lt;/div&gt;&lt;div&gt;- left_at : datetime&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="236" vertex="1">
-                    <mxGeometry y="26" width="160" height="54" as="geometry"/>
+                <mxCell id="237" value="- id : int&lt;div&gt;- joined_at : datetime&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent;&quot;&gt;- role : string&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent;&quot;&gt;- left_at : datetime&lt;/span&gt;&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" parent="236" vertex="1">
+                    <mxGeometry y="26" width="160" height="64" as="geometry"/>
                 </mxCell>
                 <mxCell id="238" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;" parent="236" vertex="1">
-                    <mxGeometry y="80" width="160" height="8" as="geometry"/>
+                    <mxGeometry y="90" width="160" height="8" as="geometry"/>
                 </mxCell>
                 <mxCell id="239" value="" style="edgeStyle=none;html=1;endArrow=none;verticalAlign=bottom;dashed=1;strokeWidth=2;" parent="1" target="236" edge="1">
                     <mxGeometry width="160" relative="1" as="geometry">
@@ -469,6 +469,12 @@
                 </mxCell>
                 <mxCell id="267" value="1" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="-1525" y="-272" width="30" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="268" value="1..*" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry x="-1610" y="-522" width="40" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="269" value="0..*" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry x="-1610" y="-250" width="40" height="30" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

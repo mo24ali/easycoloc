@@ -47,6 +47,12 @@ class Invitation extends Model
         return $this->isPending() && !$this->isExpired();
     }
 
+    /**
+     * Accept invitation and add user to collocation.
+     *
+     * NOTE: This now requires MembershipService validation before calling.
+     * The InvitationController.accept() method will validate multi-colocation constraints.
+     */
     public function accept(int $userId): void
     {
         $this->update(['status' => 'accepted', 'accepted_at' => now()]);
@@ -59,7 +65,7 @@ class Invitation extends Model
 
         // Promote user role to 'member' if still plain 'user'
         $user = User::find($userId);
-        if ($user && $user->isUser()) {
+        if ($user && $user->isNormalUser()) {
             $user->update(['role' => 'member']);
         }
     }

@@ -4,7 +4,7 @@
             <h2 class="text-2xl font-black tracking-tight text-[#142c3e]">
                 My Collocations
             </h2>
-            @if(Auth::user()->isOwner())
+            @if(Auth::user()->isOwner() || Auth::user()->isUser())
                 <a href="{{ route('collocation.create') }}" class="btn-vibrant !w-auto !px-6 !py-3 !text-base">
                     + New Collocation
                 </a>

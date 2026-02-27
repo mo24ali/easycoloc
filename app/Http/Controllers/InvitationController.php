@@ -6,6 +6,8 @@ use App\Mail\InvitationMail;
 use App\Models\Collocation;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Http\Requests\SendInvitationRequest;
+use App\Services\MembershipService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,13 +28,9 @@ class InvitationController extends Controller
     /**
      * Store a new invitation and send the email.
      */
-    public function store(Request $request, Collocation $collocation): RedirectResponse
+    public function store(SendInvitationRequest $request, Collocation $collocation): RedirectResponse
     {
-        $this->authorize('update', $collocation);
-
-        $validated = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         // Don't double-invite the same email for active invitations
         $existing = $collocation->invitations()
@@ -64,7 +62,7 @@ class InvitationController extends Controller
     /**
      * Show the join-collocation landing page (public).
      */
-    public function show(string $token): View|RedirectResponse
+    public function show(string $token, MembershipService $membershipService): View|RedirectResponse
     {
         $invitation = Invitation::where('token', $token)->firstOrFail();
 
@@ -75,7 +73,11 @@ class InvitationController extends Controller
 
         // Already logged in → accept immediately
         if (Auth::check()) {
-            $invitation->accept(Auth::id());
+            $user = Auth::user();
+            // ✅ Validation: vérifier que l'utilisateur n'a pas déjà une colocation active
+            $membershipService->validateCanJoinCollocation($user);
+
+            $invitation->accept($user->id);
             return redirect()->route('collocation.show', $invitation->collocation_id)
                 ->with('status', "You have joined {$invitation->collocation->name}!");
         }
@@ -85,7 +87,7 @@ class InvitationController extends Controller
     }
 
 
-    public function accept(string $token): RedirectResponse
+    public function accept(string $token, MembershipService $membershipService): RedirectResponse
     {
         $invitation = Invitation::where('token', $token)->firstOrFail();
 
@@ -94,7 +96,12 @@ class InvitationController extends Controller
                 ->withErrors(['invitation' => 'This invitation is no longer valid.']);
         }
 
-        $invitation->accept(Auth::id());
+        $user = Auth::user();
+
+        // ✅ Validation: vérifier que l'utilisateur n'a pas déjà une colocation active
+        $membershipService->validateCanJoinCollocation($user);
+
+        $invitation->accept($user->id);
 
         return redirect()->route('collocation.show', $invitation->collocation_id)
             ->with('status', "You have joined {$invitation->collocation->name}!");

@@ -21,15 +21,22 @@ class EnsureUserIsOwner
             abort(403, 'This action requires Owner privileges.');
         }
 
-        // Check if user has owner role globally
-        if ($user->isOwner()) {
+        if ($user->isAdmin()) {
             return $next($request);
         }
 
-        // Check if user owns the specific collocation
         $collocation = $request->route('collocation');
-        if ($collocation instanceof Collocation && $collocation->owner_id === $user->id) {
-            return $next($request);
+
+        if ($collocation instanceof Collocation) {
+            if ($collocation->owner_id === $user->id) {
+                return $next($request);
+            }
+            abort(403, 'You must be the owner of this collocation.');
+        } else {
+            // General check: must be owner of at least one collocation
+            if ($user->isOwner()) {
+                return $next($request);
+            }
         }
 
         abort(403, 'This action requires Owner privileges.');

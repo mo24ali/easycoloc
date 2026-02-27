@@ -6,6 +6,8 @@ use App\Models\Category;
 use App\Models\Collocation;
 use App\Models\Expense;
 use App\Models\ExpenseShare;
+use App\Http\Requests\StoreExpenseRequest;
+use App\Http\Requests\UpdateExpenseRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,63 +50,53 @@ class ExpenseController extends Controller
     /**
      * Store a new expense.
      */
-    public function store(Request $request, Collocation $collocation): RedirectResponse
+    public function store(StoreExpenseRequest $request, Collocation $collocation): RedirectResponse
     {
-        $this->authorize('view', $collocation);
+        $validated = $request->validated();
 
-        $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'title' => ['required', 'string', 'max:255'],
-            'category_id' => [
-                'required',
-                'string',
-                function ($attribute, $value, $fail) {
-                    if (empty($value)) {
-                        $fail('Please select a category.');
-                    } elseif ($value !== 'new') {
-                        // It should be a numeric ID that exists
-                        if (!is_numeric($value) || !Category::where('id', (int) $value)->exists()) {
-                            $fail('The selected category is invalid.');
-                        }
-                    }
-                },
-            ],
-            'new_category' => ['required_if:category_id,new', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:500'],
-            'expense_date' => ['required', 'date'],
-        ]);
-
-        if ($validated['category_id'] === 'new') {
-            $category = Category::firstOrCreate([
-                'name' => $request->new_category
-            ]);
-            $validated['category_id'] = $category->id;
-        } else {
-            $validated['category_id'] = (int) $validated['category_id'];
-        }
-
-        // Create the expense
-        $expense = $collocation->expenses()->create([
-            ...$validated,
-            'member_id' => Auth::id(),
-        ]);
-
-        // Get all active members in the collocation and split the expense
-        $activeMembers = $collocation->members()->wherePivotNull('left_at')->get();
-
-        if ($activeMembers->count() > 0) {
-            $sharePerUser = $expense->amount / $activeMembers->count();
-
-            // Create expense share record for each member
-            foreach ($activeMembers as $member) {
-                ExpenseShare::create([
-                    'expense_id' => $expense->id,
-                    'payer_id' => $member->id,
-                    'share_per_user' => $sharePerUser,
-                    'payed' => false,
+        // Wrap expense creation in a transaction to ensure data consistency
+        DB::transaction(function () use ($validated, $request, $collocation) {
+            if ($validated['category_id'] === 'new') {
+                $category = Category::firstOrCreate([
+                    'name' => $request->new_category
                 ]);
+                $validated['category_id'] = $category->id;
+            } else {
+                $validated['category_id'] = (int) $validated['category_id'];
             }
-        }
+
+            // Create the expense
+            $expense = $collocation->expenses()->create([
+                ...$validated,
+                'member_id' => Auth::id(),
+            ]);
+
+            // Get all active members in the collocation (including owner) and split the expense
+            // Active members are those in collocation_user table with left_at = NULL
+            $activeMembers = $collocation->members()->wherePivotNull('left_at')->get();
+
+            // Ensure owner is included in expense split
+            $membersToSplit = $activeMembers->pluck('id')->toArray();
+            if (!in_array($collocation->owner_id, $membersToSplit)) {
+                $membersToSplit[] = $collocation->owner_id;
+            }
+            $membersToSplit = array_unique($membersToSplit);
+
+            if (count($membersToSplit) > 0) {
+                $sharePerUser = $expense->amount / count($membersToSplit);
+
+                // Create expense share record for each member (including owner)
+                // The creator already paid their share (they spent the money), so mark theirs as payed
+                foreach ($membersToSplit as $memberId) {
+                    ExpenseShare::create([
+                        'expense_id' => $expense->id,
+                        'payer_id' => $memberId,
+                        'share_per_user' => $sharePerUser,
+                        'payed' => $memberId === Auth::id(), // creator already paid their portion
+                    ]);
+                }
+            }
+        });
 
         return redirect()->route('expense.index', $collocation)
             ->with('status', 'Expense added successfully.');
@@ -123,18 +115,9 @@ class ExpenseController extends Controller
     /**
      * Update an expense.
      */
-    public function update(Request $request, Expense $expense): RedirectResponse
+    public function update(UpdateExpenseRequest $request, Expense $expense): RedirectResponse
     {
-        $this->authorize('update', $expense);
-
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'category_id' => ['required', 'integer', 'exists:categories,id'],
-            'description' => ['nullable', 'string', 'max:500'],
-            'expense_date' => ['required', 'date'],
-        ]);
-
+        $validated = $request->validated();
         $expense->update($validated);
 
         return redirect()->route('expense.index', $expense->collocation_id)
@@ -152,6 +135,25 @@ class ExpenseController extends Controller
 
         return redirect()->route('expense.index', $collocationId)
             ->with('status', 'Expense deleted.');
+    }
+
+    /**
+     * Mark a single expense_share as paid directly.
+     * Only the payer (debtor) of the share may do this.
+     */
+    public function markSharePaid(ExpenseShare $share): RedirectResponse
+    {
+        if ($share->payer_id !== Auth::id()) {
+            abort(403, 'You can only mark your own shares as paid.');
+        }
+
+        if ($share->payed) {
+            return back()->with('status', 'This share was already marked as paid.');
+        }
+
+        $share->update(['payed' => true]);
+
+        return back()->with('status', 'Your share has been marked as paid.');
     }
 
     /**
@@ -182,6 +184,19 @@ class ExpenseController extends Controller
             ->take(5)
             ->get();
 
-        return view('dashboard', compact('collocations', 'recentExpenses'));
+        // Dashboard stats
+        $userReputation = $user->reputation_score ?? 0;
+
+        // Total of all expenses across all collocations the user belongs to
+        $collocationIds = $collocations->pluck('id');
+        $globalExpenses = Expense::whereIn('collocation_id', $collocationIds)->sum('amount');
+
+        // Total unpaid shares owed by this user across all collocations
+        $globalDebt = \App\Models\ExpenseShare::where('payer_id', $user->id)
+            ->where('payed', false)
+            ->whereHas('expense', fn($q) => $q->whereIn('collocation_id', $collocationIds))
+            ->sum('share_per_user');
+
+        return view('dashboard', compact('collocations', 'recentExpenses', 'userReputation', 'globalExpenses', 'globalDebt'));
     }
 }

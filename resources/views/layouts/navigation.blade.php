@@ -26,7 +26,7 @@
                     @endif
 
                     {{-- Owner-only route --}}
-                    @if(Auth::user()->isOwner())
+                    @if(Auth::user()->isOwner() || Auth::user()->isNormalUser())
                         <x-nav-link :href="route('collocation.create')" :active="request()->routeIs('collocation.create')">
                             {{ __('New Collocation') }}
                         </x-nav-link>
@@ -110,7 +110,7 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
 
-            @if(Auth::user()->isMember() || Auth::user()->isOwner())
+            @if( Auth::user()->isMember() || Auth::user()->isOwner() || Auth::user()->isNormalUser())
                 <x-responsive-nav-link :href="route('collocation.index')" :active="request()->routeIs('collocation.*')">
                     {{ __('My Collocation') }}
                 </x-responsive-nav-link>

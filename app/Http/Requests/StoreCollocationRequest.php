@@ -3,16 +3,15 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
-class UpdateCollocationRequest extends FormRequest
+class StoreCollocationRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return $this->user()->id === $this->collocation->owner_id;
+        return true;
     }
 
     /**
@@ -23,13 +22,7 @@ class UpdateCollocationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('collocations')->ignore($this->collocation->id),
-            ],
-            'status' => ['required', 'in:active,inactive'],
+            'name' => ['required', 'string', 'max:255', 'unique:collocations'],
         ];
     }
 
@@ -40,9 +33,9 @@ class UpdateCollocationRequest extends FormRequest
     {
         return [
             'name.required' => 'The collocation name is required.',
+            'name.string' => 'The collocation name must be a text.',
+            'name.max' => 'The collocation name must not exceed 255 characters.',
             'name.unique' => 'A collocation with this name already exists.',
-            'status.required' => 'The status is required.',
-            'status.in' => 'The status must be either active or inactive.',
         ];
     }
 }

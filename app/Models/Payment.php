@@ -17,6 +17,7 @@ class Payment extends Model
         'amount',
         'status',
         'paid_at',
+        'rejection_reason',
     ];
 
     protected function casts(): array
@@ -24,6 +25,8 @@ class Payment extends Model
         return [
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
         ];
     }
 
@@ -48,8 +51,34 @@ class Payment extends Model
     {
         return $this->status === 'pending';
     }
+
+    public function isConfirmed(): bool
+    {
+        return $this->status === 'confirmed';
+    }
+
     public function isCompleted(): bool
     {
         return $this->status === 'completed';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
+    public function isPendingReceiverConfirmation(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isPendingPayment(): bool
+    {
+        return $this->status === 'confirmed';
     }
 }

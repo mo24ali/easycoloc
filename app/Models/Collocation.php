@@ -40,8 +40,7 @@ class Collocation extends Model
 
 
     /**
-     * Sum of all expenses paid by a specific member in this collocation.
-     */
+     * Sum of all expenses paid by a specific member in this collocation.*/
     public function getTotalSpentByMember(int $userId): float
     {
         return (float) $this->expenses()
@@ -51,7 +50,6 @@ class Collocation extends Model
 
     /**
      * Net balance for a member.
-     * Positive = member owes money | Negative = member is owed money
      */
     public function getMemberBalance(int $userId): float
     {
@@ -64,8 +62,7 @@ class Collocation extends Model
 
     /**
      * Get detailed expense share breakdown.
-     * Returns each user's shares and who they owe money to.
-     * Returns [{user_id, user_name, shares: [{share_id, amount, receiver_id, receiver_name, expense_id, expense_title, payed}]}]
+     * turns [{user_id, user_name, shares: [{share_id, amount, receiver_id, receiver_name, expense_id, expense_title, payed}]}]
      */
     public function getExpenseShareDetails(): array
     {
@@ -97,6 +94,7 @@ class Collocation extends Model
                 'user_name' => $payerName,
                 'shares' => $shares->map(fn($share) => [
                     'share_id' => $share->share_id,
+                    'payer_id' => $share->payer_id,
                     'amount' => (float) $share->amount,
                     'receiver_id' => $share->receiver_id,
                     'receiver_name' => $share->receiver_name,
@@ -111,58 +109,9 @@ class Collocation extends Model
     }
 
     /**
-     * Minimal-transaction reimbursement suggestions based on expense shares.
-     * Returns [{payer_id, payer_name, receiver_id, receiver_name, amount}]
+     * Minimal-transaction reimbursement suggestions based on expense shares
      */
-    public function getReimbursementSuggestions(): array
-    {
-        // Get all unpaid expense shares
-        $expenseShares = DB::table('expense_share')
-            ->join('expenses', 'expense_share.expense_id', '=', 'expenses.id')
-            ->where('expenses.collocation_id', $this->id)
-            ->where('expense_share.payed', false)
-            ->select(
-                'expense_share.payer_id',
-                'expenses.member_id as receiver_id',
-                'expense_share.share_per_user as amount'
-            )
-            ->get();
 
-        // Aggregate debts: payer_id → receiver_id → total amount
-        $debts = collect();
-        foreach ($expenseShares as $share) {
-            $key = $share->payer_id . '_' . $share->receiver_id;
-            if (!$debts->has($key)) {
-                $debts->put($key, [
-                    'payer_id' => $share->payer_id,
-                    'receiver_id' => $share->receiver_id,
-                    'amount' => 0,
-                ]);
-            }
-            $debts[$key]['amount'] += (float) $share->amount;
-        }
-
-        // Add user names
-        $users = $this->members()->wherePivotNull('left_at')->get()->keyBy('id');
-        $transactions = [];
-
-        foreach ($debts as $debt) {
-            $payer = $users->get($debt['payer_id']);
-            $receiver = $users->get($debt['receiver_id']);
-
-            if ($payer && $receiver) {
-                $transactions[] = [
-                    'payer_id' => $debt['payer_id'],
-                    'payer_name' => $payer->name,
-                    'receiver_id' => $debt['receiver_id'],
-                    'receiver_name' => $receiver->name,
-                    'amount' => round($debt['amount'], 2),
-                ];
-            }
-        }
-
-        return $transactions;
-    }
 
     // ─── Scopes ──────────────────────────────────────────────────────────────
 

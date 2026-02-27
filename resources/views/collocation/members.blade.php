@@ -1,19 +1,22 @@
 <x-app-layout>
     <x-slot name="header">
-        <div>
-            <a href="{{ route('collocation.show', $collocation) }}"
-                class="text-xs text-[#657e9a] hover:text-[#2563eb] transition-colors mb-1 inline-block">
-                ← {{ $collocation->name }}
-            </a>
-            <h2 class="text-2xl font-black tracking-tight text-[#142c3e]">
-                Members
-                <span class="text-base font-semibold text-[#657e9a] ml-2">({{ $members->total() }})</span>
-            </h2>
-            <form method="get" action="invite">
-                <button>
-                    Add member
-                </button>
-            </form>
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <a href="{{ route('collocation.show', $collocation) }}"
+                    class="text-xs text-[#657e9a] hover:text-[#2563eb] transition-colors mb-1 inline-block">
+                    ← {{ $collocation->name }}
+                </a>
+                <h2 class="text-2xl font-black tracking-tight text-[#142c3e]">
+                    Members
+                    <span class="text-base font-semibold text-[#657e9a] ml-2">({{ $members->total() }})</span>
+                </h2>
+            </div>
+            @can('update', $collocation)
+                <a href="{{ route('invitation.create', $collocation) }}"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-[#2563eb] text-white rounded-full shadow-sm hover:bg-[#1a4ac4] transition-all">
+                    + Invite Member
+                </a>
+            @endcan
         </div>
     </x-slot>
 
@@ -30,20 +33,20 @@
 
                     {{-- Table header --}}
                     <div class="grid grid-cols-12 gap-4 px-6 py-3 bg-[#f4f9ff] border-b border-[#dae2ec]">
-                        <div class="col-span-6 text-xs font-bold text-[#657e9a] uppercase tracking-wider">Member</div>
+                        <div class="col-span-5 text-xs font-bold text-[#657e9a] uppercase tracking-wider">Member</div>
                         <div class="col-span-3 text-xs font-bold text-[#657e9a] uppercase tracking-wider">Role</div>
-                        <div class="col-span-3 text-xs font-bold text-[#657e9a] uppercase tracking-wider text-right">
+                        <div class="col-span-2 text-xs font-bold text-[#657e9a] uppercase tracking-wider text-center">
                             Reputation</div>
+                        <div class="col-span-2 text-xs font-bold text-[#657e9a] uppercase tracking-wider text-right">Actions
+                        </div>
                     </div>
 
-                    {{-- Member rows --}}
                     <ul class="divide-y divide-[#f0f4f8]">
                         @foreach ($members as $member)
-                            <li
-                                class="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-[#f9fbff] transition-colors">
+                            <li class="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-[#f9fbff] transition-colors">
 
                                 {{-- Avatar + name + email --}}
-                                <div class="col-span-6 flex items-center gap-4 min-w-0">
+                                <div class="col-span-5 flex items-center gap-4 min-w-0">
                                     <div
                                         class="w-10 h-10 bg-[#2563eb]/10 rounded-full flex items-center justify-center shrink-0">
                                         <span class="text-[#2563eb] text-sm font-bold">
@@ -56,19 +59,51 @@
                                     </div>
                                 </div>
 
-                                {{-- Role badge --}}
+                                {{-- Role badge (from pivot) --}}
                                 <div class="col-span-3">
+                                    @php $pivotRole = $member->pivot->role ?? 'member'; @endphp
                                     <span
-                                        class="bg-[#f4f9ff] text-[#2563eb] text-xs font-semibold px-3 py-1 rounded-full border border-[#2563eb]/20 capitalize">
-                                        {{ $member->role }}
+                                        class="{{ $pivotRole === 'owner' ? 'bg-[#2563eb] text-white' : 'bg-[#f4f9ff] text-[#2563eb] border border-[#2563eb]/20' }} text-xs font-semibold px-3 py-1 rounded-full capitalize">
+                                        {{ $pivotRole }}
                                     </span>
                                 </div>
 
                                 {{-- Reputation score --}}
-                                <div class="col-span-3 text-right">
+                                <div class="col-span-2 text-center">
                                     <span class="text-sm font-semibold text-[#4b6379]">
                                         ⭐ {{ $member->reputation_score ?? 0 }}
                                     </span>
+                                </div>
+
+                                {{-- Remove member / Pass ownership action (owner only, can't remove self) --}}
+                                <div class="col-span-2 flex justify-end">
+                                    @can('update', $collocation)
+                                        @if($member->id !== $collocation->owner_id)
+                                            <div class="flex items-center gap-3">
+                                                <form method="POST"
+                                                    action="{{ route('collocation.passOwnership', [$collocation, $member]) }}"
+                                                    onsubmit="return confirm('Pass ownership of this collocation to {{ $member->name }}?')">
+                                                    @csrf
+                                                    <button type="submit"
+                                                        class="text-xs font-bold text-[#2563eb] hover:text-[#1e4db7] hover:underline transition-colors shrink-0">
+                                                        Pass Ownership
+                                                    </button>
+                                                </form>
+                                                <form method="POST"
+                                                    action="{{ route('collocation.removeMember', [$collocation, $member]) }}"
+                                                    onsubmit="return confirm('Remove {{ $member->name }} from this collocation?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                        class="text-xs font-bold text-red-500 hover:text-red-700 hover:underline transition-colors shrink-0">
+                                                        Remove
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        @else
+                                            <span class="text-xs text-[#657e9a]">Owner</span>
+                                        @endif
+                                    @endcan
                                 </div>
 
                             </li>

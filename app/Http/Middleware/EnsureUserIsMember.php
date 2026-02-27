@@ -17,8 +17,29 @@ class EnsureUserIsMember
     {
         $user = $request->user();
 
-        if (!$user || (!$user->isMember() && !$user->isOwner())) {
+        if (!$user) {
             abort(403, 'This action requires Member privileges.');
+        }
+
+        if ($user->isAdmin()) {
+            return $next($request);
+        }
+
+        $collocation = $request->route('collocation');
+
+        if ($collocation instanceof \App\Models\Collocation) {
+            // Contextual check
+            $isMember = $collocation->members()->where('user_id', $user->id)->wherePivotNull('left_at')->exists();
+            $isOwner = $collocation->owner_id === $user->id;
+
+            if (!$isMember && !$isOwner) {
+                abort(403, 'You must be a member or owner of this collocation.');
+            }
+        } else {
+            // General check: must be a member or owner of AT LEAST ONE collocation
+            if (!$user->isMember() && !$user->isOwner()) {
+                abort(403, 'This action requires Member privileges.');
+            }
         }
 
         return $next($request);
