@@ -13,6 +13,7 @@ Route::get('/', function () {
 });
 
 Route::get('/join/{token}', [InvitationController::class, 'show'])->name('invitation.join');
+Route::post('/join', [InvitationController::class, 'joinByToken'])->name('invitation.join.post');
 Route::get('/join/{token}/accept', [InvitationController::class, 'accept'])
     ->middleware('auth')->name('invitation.accept');
 

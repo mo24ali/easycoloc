@@ -56,7 +56,20 @@ class InvitationController extends Controller
         Mail::to($validated['email'])->send(new InvitationMail($invitation));
 
         return redirect()->route('collocation.show', $collocation)
-            ->with('status', "Invitation sent to {$validated['email']}.");
+            ->with('status', "Invitation sent to {$validated['email']}.")
+            ->with('invitation_token', $invitation->token);
+    }
+
+    /**
+     * Handle POST form submission to join by a given token.
+     */
+    public function joinByToken(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'token' => 'required|string',
+        ]);
+
+        return redirect()->route('invitation.join', ['token' => $request->token]);
     }
 
     /**

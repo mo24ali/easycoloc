@@ -52,9 +52,18 @@
 
             {{-- Flash status --}}
             @if (session('status'))
-                <div
-                    class="px-5 py-4 bg-[#f4f9ff] border border-[#2563eb]/20 rounded-2xl text-[#2563eb] font-semibold text-sm">
-                    {{ session('status') }}
+                <div class="px-5 py-4 bg-[#f4f9ff] border border-[#2563eb]/20 rounded-2xl text-[#2563eb] font-semibold text-sm flex justify-between items-center flex-wrap gap-4">
+                    <span>{{ session('status') }}</span>
+                    @if(session('invitation_token'))
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs bg-white border border-[#2563eb]/20 px-3 py-1.5 rounded text-[#657e9a] font-mono truncate max-w-[200px]" title="{{ session('invitation_token') }}">
+                                {{ substr(session('invitation_token'), 0, 16) }}...
+                            </span>
+                            <button onclick="navigator.clipboard.writeText('{{ session('invitation_token') }}'); this.innerText='Copied!';" class="text-xs font-bold text-white bg-[#2563eb] px-3 py-1.5 rounded hover:bg-[#1a4ac4] transition-colors shrink-0">
+                                Copy Token
+                            </button>
+                        </div>
+                    @endif
                 </div>
             @endif
 
