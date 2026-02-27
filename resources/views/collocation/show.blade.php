@@ -52,7 +52,7 @@
                 <div class="bg-white rounded-2xl border border-[#dae2ec] shadow-sm p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-extrabold text-[#1b364b]">Expenses</h3>
-                        @can('update', $collocation)
+                        @can('view', $collocation)
                             <a href="{{ route('expense.create', $collocation) }}"
                                class="text-sm font-bold text-white bg-[#2563eb] px-4 py-2 rounded-full hover:bg-[#1e4db7] transition-all">
                                 + Add Expense

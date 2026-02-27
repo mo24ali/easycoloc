@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CollocationController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvitationController;
@@ -44,6 +45,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/collocations/{collocation}/payments', [PaymentController::class, 'store'])->name('payment.store');
         Route::post('/payments/{payment}/complete', [PaymentController::class, 'complete'])->name('payment.complete');
         Route::post('/payments/{payment}/cancel', [PaymentController::class, 'cancel'])->name('payment.cancel');
+    });
+
+    Route::middleware('admin')->group(function () {
+        Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+        Route::post('/admin/users/{user}/ban', [AdminController::class, 'ban'])->name('admin.ban');
+        Route::post('/admin/users/{user}/unban', [AdminController::class, 'unban'])->name('admin.unban');
+        Route::delete('/admin/users/{user}', [AdminController::class, 'destroy'])->name('admin.destroy');
     });
 
     Route::middleware('owner')->group(function () {

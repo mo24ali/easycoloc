@@ -27,7 +27,6 @@ class Collocation extends Model
         ];
     }
 
-    // ─── Business logic ────────────────────────────────────────────────────────
 
     public function isCancelled(): bool
     {
@@ -39,7 +38,6 @@ class Collocation extends Model
         $this->update(['cancelled_at' => now(), 'status' => 'inactive']);
     }
 
-    // ─── Balance helpers (Epic 6) ─────────────────────────────────────────────
 
     /**
      * Sum of all expenses paid by a specific member in this collocation.

@@ -10,12 +10,10 @@
                 </h2>
             </div>
             <div class="flex flex-wrap gap-3">
-                @if (Auth::user()->isOwner())
-                    <a href="{{ route('collocation.create') }}"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-[#2563eb] text-white rounded-full shadow-sm hover:bg-[#1a4ac4] transition-all">
-                        + New Collocation
-                    </a>
-                @endif
+                <a href="{{ route('collocation.create') }}"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-[#2563eb] text-white rounded-full shadow-sm hover:bg-[#1a4ac4] transition-all">
+                    + New Collocation
+                </a>
             </div>
         </div>
     </x-slot>

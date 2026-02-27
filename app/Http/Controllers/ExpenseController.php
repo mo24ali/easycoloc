@@ -160,13 +160,21 @@ class ExpenseController extends Controller
     public function getExpensePerUser(): View
     {
         $user = Auth::user();
-        $collocations = collect();
 
-        if ($user->isOwner()) {
-            $collocations = $user->ownedCollocations()->active()->withCount('members')->get();
-        } elseif ($user->isMember()) {
-            $collocations = $user->collocations()->active()->withCount('members')->get();
-        }
+        // Get both owned and member collocations
+        $ownedQuery = $user->ownedCollocations()
+            ->active()
+            ->select(['collocations.*'])
+            ->withCount('members');
+
+        $memberQuery = Collocation::whereHas('members', function ($query) use ($user) {
+            $query->where('user_id', $user->id)->whereNull('left_at');
+        })
+            ->active()
+            ->select(['collocations.*'])
+            ->withCount('members');
+
+        $collocations = $ownedQuery->union($memberQuery)->get();
 
         $recentExpenses = Expense::with(['collocation', 'category'])
             ->where('member_id', $user->id)

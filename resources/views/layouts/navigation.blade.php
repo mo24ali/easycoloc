@@ -31,6 +31,13 @@
                             {{ __('New Collocation') }}
                         </x-nav-link>
                     @endif
+
+                    {{-- Admin route --}}
+                    @if(Auth::user()->isAdmin())
+                        <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
+                            {{ __('Admin') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -43,7 +50,8 @@
                             <div class="mr-2">{{ Auth::user()->name }}</div>
                             {{-- Role badge --}}
                             <span class="text-xs font-bold px-2 py-0.5 rounded-full
-                                @if(Auth::user()->isOwner()) bg-[#2563eb] text-white
+                                @if(Auth::user()->isAdmin()) bg-purple-100 text-purple-700 border border-purple-300
+                                @elseif(Auth::user()->isOwner()) bg-[#2563eb] text-white
                                 @elseif(Auth::user()->isMember()) bg-[#f4f9ff] text-[#2563eb] border border-[#2563eb]/20
                                 @else bg-gray-100 text-gray-500
                                 @endif capitalize">

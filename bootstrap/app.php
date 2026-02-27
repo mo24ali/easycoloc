@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'owner' => \App\Http\Middleware\EnsureUserIsOwner::class,
             'member' => \App\Http\Middleware\EnsureUserIsMember::class,
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'banned' => \App\Http\Middleware\CheckIfBanned::class,
         ]);
 

@@ -18,17 +18,20 @@ class CollocationController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->isOwner()) {
-            $collocations = $user->ownedCollocations()
-                ->withCount('members')
-                ->orderByDesc('created_at')
-                ->paginate(9);
-        } else {
-            $collocations = $user->collocations()
-                ->withCount('members')
-                ->orderByDesc('created_at')
-                ->paginate(9);
-        }
+        // Use union to combine owned and member collocations in a single query
+        $ownedQuery = $user->ownedCollocations()
+            ->select(['collocations.*'])
+            ->withCount('members');
+
+        $memberQuery = Collocation::whereHas('members', function ($query) use ($user) {
+            $query->where('user_id', $user->id)->whereNull('left_at');
+        })
+            ->select(['collocations.*'])
+            ->withCount('members');
+
+        $collocations = $ownedQuery->union($memberQuery)
+            ->orderByDesc('created_at')
+            ->paginate(9);
 
         return view('collocation.index', compact('collocations'));
     }
@@ -50,9 +53,17 @@ class CollocationController extends Controller
             'name' => ['required', 'string', 'max:255'],
         ]);
 
+        $user = Auth::user();
+
+        // Promote user to owner if they are still a regular user
+        if ($user->isUser()) {
+            $user->update(['role' => 'owner']);
+            $user->refresh(); // Refresh the user object to reflect the database change
+        }
+
         $collocation = Collocation::create([
             'name' => $validated['name'],
-            'owner_id' => Auth::id(),
+            'owner_id' => $user->id,
             'status' => 'active',
         ]);
 
