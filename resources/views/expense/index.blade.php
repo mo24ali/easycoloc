@@ -18,20 +18,78 @@
     <div class="py-8">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-            {{-- Category Filter --}}
-            <form method="GET" class="flex flex-wrap gap-2 items-center">
-                <span class="text-sm font-semibold text-[#4b6379]">Filter:</span>
-                <a href="{{ route('expense.index', $collocation) }}"
-                    class="px-4 py-1.5 rounded-full text-xs font-bold transition-colors {{ !$categoryId ? 'bg-[#2563eb] text-white' : 'bg-white border border-[#dae2ec] text-[#4b6379] hover:bg-[#f4f9ff]' }}">
-                    All
-                </a>
-                @foreach($categories as $cat)
-                    <a href="{{ route('expense.index', [$collocation, 'category' => $cat->id]) }}"
-                        class="px-4 py-1.5 rounded-full text-xs font-bold transition-colors {{ $categoryId == $cat->id ? 'bg-[#2563eb] text-white' : 'bg-white border border-[#dae2ec] text-[#4b6379] hover:bg-[#f4f9ff]' }}">
-                        {{ $cat->name }}
+            {{-- Math Map Statistics Output --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Category Velocity -->
+                <div class="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-sm">
+                    <h3 class="text-sm font-extrabold text-[#657e9a] mb-4 uppercase tracking-wider">Category Velocity
+                    </h3>
+                    @if($categoryStats->isEmpty())
+                        <p class="text-xs text-[#a3b8cc]">No data available.</p>
+                    @else
+                        <div class="space-y-3">
+                            @foreach($categoryStats as $name => $amount)
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-semibold text-[#142c3e]">{{ $name }}</span>
+                                    <span class="text-sm font-bold text-[#2563eb]">€{{ number_format($amount, 2) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Monthly Velocity -->
+                <div class="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-sm">
+                    <h3 class="text-sm font-extrabold text-[#657e9a] mb-4 uppercase tracking-wider">Monthly Velocity
+                    </h3>
+                    @if($monthlyStats->isEmpty())
+                        <p class="text-xs text-[#a3b8cc]">No data available.</p>
+                    @else
+                        <div class="space-y-3 max-h-[150px] overflow-y-auto pr-2">
+                            @foreach($monthlyStats as $name => $amount)
+                                <div class="flex items-center justify-between">
+                                    <span
+                                        class="text-sm font-semibold text-[#142c3e]">{{ \Carbon\Carbon::parse($name)->format('M. Y') }}</span>
+                                    <span class="text-sm font-bold text-[#2563eb]">€{{ number_format($amount, 2) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Category & Month Filters --}}
+            <div class="flex flex-col gap-3 p-5 bg-[#f8fafc] rounded-2xl border border-[#e2e8f0]">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-sm font-semibold text-[#4b6379] w-20">Category:</span>
+                    <a href="{{ route('expense.index', [$collocation, 'month' => request('month')]) }}"
+                        class="px-4 py-1.5 rounded-full text-xs font-bold transition-colors {{ !$categoryId ? 'bg-[#2563eb] text-white' : 'bg-white border border-[#dae2ec] text-[#4b6379] hover:bg-[#f4f9ff]' }}">
+                        All
                     </a>
-                @endforeach
-            </form>
+                    @foreach($categories as $cat)
+                        <a href="{{ route('expense.index', [$collocation, 'category' => $cat->id, 'month' => request('month')]) }}"
+                            class="px-4 py-1.5 rounded-full text-xs font-bold transition-colors {{ $categoryId == $cat->id ? 'bg-[#2563eb] text-white' : 'bg-white border border-[#dae2ec] text-[#4b6379] hover:bg-[#f4f9ff]' }}">
+                            {{ $cat->name }}
+                        </a>
+                    @endforeach
+                </div>
+
+                @if($monthlyStats->isNotEmpty())
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <span class="text-sm font-semibold text-[#4b6379] w-20">Month:</span>
+                        <a href="{{ route('expense.index', [$collocation, 'category' => request('category')]) }}"
+                            class="px-4 py-1.5 rounded-full text-xs font-bold transition-colors {{ !isset($month) || !$month ? 'bg-[#2563eb] text-white' : 'bg-white border border-[#dae2ec] text-[#4b6379] hover:bg-[#f4f9ff]' }}">
+                            All Time
+                        </a>
+                        @foreach($monthlyStats->keys() as $mKey)
+                            <a href="{{ route('expense.index', [$collocation, 'month' => $mKey, 'category' => request('category')]) }}"
+                                class="px-4 py-1.5 rounded-full text-xs font-bold transition-colors {{ (isset($month) && $month === $mKey) ? 'bg-[#2563eb] text-white' : 'bg-white border border-[#dae2ec] text-[#4b6379] hover:bg-[#f4f9ff]' }}">
+                                {{ \Carbon\Carbon::parse($mKey)->format('M. Y') }}
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
 
             {{-- Expense list --}}
             @if($expenses->isEmpty())

@@ -2,40 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Collocation;
-use App\Models\Expense;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
+use App\Services\AdminService;
 
 class AdminController extends Controller
 {
+    public function __construct(
+        private AdminService $adminService
+    ) {
+    }
+
     /**
      * Show the admin dashboard with stats and user management.
      */
     public function dashboard(): View
     {
         // Get stats
-        $totalUsers = User::count();
-        $totalAdmins = User::where('role', 'admin')->count();
-        $totalBannedUsers = User::where('is_banned', true)->count();
-        $totalCollocations = Collocation::count();
-        $totalExpenses = Expense::sum('amount') ?? 0;
-        $totalMembers = User::whereIn('role', ['member', 'owner'])->count();
+        $stats = $this->adminService->getDashboardStats();
 
         // Get all users with pagination
         $users = User::orderByDesc('created_at')->paginate(15);
 
-        return view('admin.dashboard', compact(
-            'totalUsers',
-            'totalAdmins',
-            'totalBannedUsers',
-            'totalCollocations',
-            'totalExpenses',
-            'totalMembers',
-            'users'
-        ));
+        return view('admin.dashboard', array_merge($stats, ['users' => $users]));
     }
 
     /**
@@ -43,11 +33,9 @@ class AdminController extends Controller
      */
     public function ban(User $user): RedirectResponse
     {
-        if ($user->isAdmin()) {
+        if (!$this->adminService->banUser($user)) {
             return back()->withErrors(['user' => 'Cannot ban an admin user.']);
         }
-
-        $user->update(['is_banned' => true]);
 
         return back()->with('status', "{$user->name} has been banned.");
     }
@@ -57,7 +45,7 @@ class AdminController extends Controller
      */
     public function unban(User $user): RedirectResponse
     {
-        $user->update(['is_banned' => false]);
+        $this->adminService->unbanUser($user);
 
         return back()->with('status', "{$user->name} has been unbanned.");
     }
@@ -67,12 +55,11 @@ class AdminController extends Controller
      */
     public function destroy(User $user): RedirectResponse
     {
-        if ($user->isAdmin()) {
+        $name = $user->name;
+
+        if (!$this->adminService->deleteUser($user)) {
             return back()->withErrors(['user' => 'Cannot delete an admin user.']);
         }
-
-        $name = $user->name;
-        $user->delete();
 
         return back()->with('status', "{$name} has been deleted.");
     }

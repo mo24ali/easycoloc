@@ -9,16 +9,17 @@ use App\Models\User;
 use App\Services\MembershipService;
 use App\Services\CollocationCleanupService;
 use App\Services\DebtOptimizationService;
+use App\Services\CollocationService;
 use App\Services\BalanceService;
+use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class CollocationController extends Controller
 {
-    /**
+    /** 
      * List collocations the authenticated user owns or belongs to.
      */
     public function index(): View
@@ -93,7 +94,6 @@ class CollocationController extends Controller
     public function show(Collocation $collocation, DebtOptimizationService $debtOptimizationService, BalanceService $balanceService): View
     {
         $this->authorize('view', $collocation);
-        // $collocation->load(['owner', 'members
 
         // Get detailed expense share information
         $expenseShares = $collocation->getExpenseShareDetails();
@@ -172,45 +172,14 @@ class CollocationController extends Controller
     /**
      * Pass ownership from current owner to another member.
      */
-    public function passOwnership(Collocation $collocation, User $user): RedirectResponse
+    public function passOwnership(Collocation $collocation, User $user, CollocationService $collocationService): RedirectResponse
     {
         $this->authorize('update', $collocation);
 
-        if ($collocation->owner_id === $user->id) {
-            return back()->withErrors(['member' => 'This member is already the owner.']);
-        }
-
-        $isMember = $collocation->members()->where('users.id', $user->id)->wherePivotNull('left_at')->exists();
-        if (!$isMember) {
-            return back()->withErrors(['member' => 'The user must be an active member of this collocation to receive ownership.']);
-        }
-
-        $oldOwnerId = $collocation->owner_id;
-        $oldOwner = User::find($oldOwnerId);
-
-        // 1. Update Collocation owner
-        $collocation->update(['owner_id' => $user->id]);
-
-        // 2. Update new owner pivot role
-        $collocation->members()->updateExistingPivot($user->id, [
-            'role' => 'owner'
-        ]);
-
-        // 3. Update old owner pivot role
-        if ($oldOwner) {
-            $collocation->members()->updateExistingPivot($oldOwnerId, [
-                'role' => 'member'
-            ]);
-
-            // 4. Update old owner User model role if they don't own any other collocations
-            if (!$oldOwner->ownedCollocations()->exists() && !$oldOwner->isAdmin()) {
-                $oldOwner->update(['role' => 'member']);
-            }
-        }
-
-        // 5. Update new owner User model role
-        if (!$user->isAdmin()) {
-            $user->update(['role' => 'owner']);
+        try {
+            $collocationService->passOwnership($collocation, $user);
+        } catch (Exception $e) {
+            return back()->withErrors(['member' => $e->getMessage()]);
         }
 
         return redirect()->route('collocation.members', $collocation)
@@ -220,7 +189,7 @@ class CollocationController extends Controller
     /**
      * Allow the authenticated member to leave the collocation.
      */
-    public function leave(Collocation $collocation, CollocationCleanupService $cleanupService): RedirectResponse
+    public function leave(Collocation $collocation, CollocationCleanupService $cleanupService, CollocationService $collocationService): RedirectResponse
     {
         $user = Auth::user();
 
@@ -241,16 +210,8 @@ class CollocationController extends Controller
 
         $details = $cleanupService->memberLeaves($collocation, $user);
 
-        // If the user has no remaining active collocations, reset their role to 'user'
-        // so they can join or create a new collocation
-        $hasOtherCollocations = $user->collocations()
-            ->wherePivotNull('left_at')
-            ->where('collocations.status', 'active')
-            ->exists();
-
-        if (!$hasOtherCollocations) {
-            $user->update(['role' => 'user']);
-        }
+        // Delegate structural identity finalization checking to CollocationService
+        $collocationService->completeMemberLeave($user);
 
         return redirect()->route('dashboard')
             ->with('status', "You have left {$collocation->name}. (Reputation: {$details['reputation_change']})");

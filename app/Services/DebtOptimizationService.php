@@ -148,21 +148,4 @@ class DebtOptimizationService
         return $transactions;
     }
 
-    /**
-     * Calcule les statistiques de l'optimisation.
-     *
-     * @param array $transactions
-     * @return array
-     */
-    public function getOptimizationStats(array $transactions): array
-    {
-        $totalAmount = array_sum(array_column($transactions, 'amount'));
-        $transactionCount = count($transactions);
-
-        return [
-            'transaction_count' => $transactionCount,
-            'total_amount' => round($totalAmount, 2),
-            'average_per_transaction' => $transactionCount > 0 ? round($totalAmount / $transactionCount, 2) : 0,
-        ];
-    }
 }

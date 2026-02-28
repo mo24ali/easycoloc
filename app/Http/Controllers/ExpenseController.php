@@ -24,17 +24,49 @@ class ExpenseController extends Controller
         $this->authorize('view', $collocation);
 
         $categoryId = request('category');
+        $month = request('month');
 
-        $expenses = $collocation->expenses()
+        $expensesQuery = $collocation->expenses()
             ->with(['member', 'category'])
             ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
-            ->orderByDesc('expense_date')
+            ->when($month, function ($q) use ($month) {
+                // Filter by explicitly captured YYYY-MM
+                $parts = explode('-', $month);
+                if (count($parts) === 2) {
+                    $q->whereYear('expense_date', $parts[0])
+                        ->whereMonth('expense_date', $parts[1]);
+                }
+            });
+
+        $expenses = $expensesQuery->orderByDesc('expense_date')
             ->paginate(20)
             ->withQueryString();
 
         $categories = Category::orderBy('name')->get();
 
-        return view('expense.index', compact('collocation', 'expenses', 'categories', 'categoryId'));
+        // Calculate Category and Monthly Stats across the unfiltered base of the collocation using Collections
+        $allCollocationExpenses = $collocation->expenses()->with('category')->get();
+
+        $categoryStats = $allCollocationExpenses->groupBy('category_id')->mapWithKeys(function ($group) {
+            $catName = $group->first()->category->name ?? 'Unknown';
+            return [$catName => round($group->sum('amount'), 2)];
+        })->sortDesc();
+
+        $monthlyStats = $allCollocationExpenses->groupBy(function ($expense) {
+            return \Carbon\Carbon::parse($expense->expense_date)->format('Y-m');
+        })->mapWithKeys(function ($group, $key) {
+            return [$key => round($group->sum('amount'), 2)];
+        })->sortKeysDesc();
+
+        return view('expense.index', compact(
+            'collocation',
+            'expenses',
+            'categories',
+            'categoryId',
+            'month',
+            'categoryStats',
+            'monthlyStats'
+        ));
     }
 
     /**

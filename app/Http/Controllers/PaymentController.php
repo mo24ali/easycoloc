@@ -5,19 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Collocation;
 use App\Models\Payment;
 use App\Http\Requests\StorePaymentRequest;
-use App\Services\BalanceService;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class PaymentController extends Controller
 {
-    public function __construct(
-        protected BalanceService $balanceService
-    ) {
-    }
-
     /**
      * List payments for a collocation.
      */

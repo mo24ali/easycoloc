@@ -2,17 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\InvitationMail;
 use App\Models\Collocation;
 use App\Models\Invitation;
-use App\Models\User;
 use App\Http\Requests\SendInvitationRequest;
 use App\Services\MembershipService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
+use Exception;
+use App\Services\InvitationService;
 
 class InvitationController extends Controller
 {
@@ -28,36 +27,19 @@ class InvitationController extends Controller
     /**
      * Store a new invitation and send the email.
      */
-    public function store(SendInvitationRequest $request, Collocation $collocation): RedirectResponse
+    public function store(SendInvitationRequest $request, Collocation $collocation, InvitationService $invitationService): RedirectResponse
     {
         $validated = $request->validated();
 
-        // Don't double-invite the same email for active invitations
-        $existing = $collocation->invitations()
-            ->where('email', $validated['email'])
-            ->where('status', 'pending')
-            ->where('expires_at', '>', now())
-            ->first();
+        try {
+            $invitation = $invitationService->invite($collocation, $validated['email'], Auth::id());
 
-        if ($existing) {
-            return back()->withErrors(['email' => 'An active invitation has already been sent to this address.']);
+            return redirect()->route('collocation.show', $collocation)
+                ->with('status', "Invitation sent to {$validated['email']}.")
+                ->with('invitation_token', $invitation->token);
+        } catch (Exception $e) {
+            return back()->withErrors(['email' => $e->getMessage()]);
         }
-
-        $invitation = Invitation::create([
-            'collocation_id' => $collocation->id,
-            'sender_id' => Auth::id(),
-            'email' => $validated['email'],
-            'token' => Invitation::generateToken(),
-            'status' => 'pending',
-            'expires_at' => now()->addDays(14),
-        ]);
-
-        // Send the email (queue in production)
-        Mail::to($validated['email'])->send(new InvitationMail($invitation));
-
-        return redirect()->route('collocation.show', $collocation)
-            ->with('status', "Invitation sent to {$validated['email']}.")
-            ->with('invitation_token', $invitation->token);
     }
 
     /**
