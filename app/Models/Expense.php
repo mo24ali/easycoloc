@@ -30,8 +30,7 @@ class Expense extends Model
         ];
     }
 
-    // ─── Relationships ────────────────────────────────────────────────────────
-
+    
     public function collocation(): BelongsTo
     {
         return $this->belongsTo(Collocation::class);

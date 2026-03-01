@@ -27,8 +27,7 @@ class ExpenseShare extends Model
         ];
     }
 
-    // ─── Relationships ────────────────────────────────────────────────────────
-
+    
     public function payer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'payer_id');

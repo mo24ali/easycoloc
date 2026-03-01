@@ -78,7 +78,7 @@ class User extends Authenticatable
         return $this->role === 'user' ;
     }
 
-    // ─── Relationships ────────────────────────────────────────────────────────
+    // ─── Relatinships ────────────────────────────────────────────────────────
 
     /**
      * Collocations this user owns (as 'owner').

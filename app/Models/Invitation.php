@@ -82,7 +82,6 @@ class Invitation extends Model
         return $this->belongsTo(User::class, 'sender_id');
     }
 
-    // ─── Factory ──────────────────────────────────────────────────────────────
 
     public static function generateToken(): string
     {

@@ -10,8 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 class CheckIfBanned
 {
     /**
-     * Handle an incoming request.
-     * Logs out and redirects banned users with an error message.
+     * Handle the banned user if it is indeed banned , it got logged out , and redirected to the root page where /
      */
     public function handle(Request $request, Closure $next): Response
     {
