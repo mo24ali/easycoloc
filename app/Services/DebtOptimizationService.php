@@ -7,32 +7,14 @@ use Illuminate\Support\Collection;
 
 /**
  * Service pour l'optimisation des transactions de remboursement.
- *
- * Algorithme:
- * 1. Sépare les créditeurs (solde > 0) et débiteurs (solde < 0)
- * 2. Réduit le nombre de transactions via compensation mutuelle
- * 3. Utilise un algorithme greedy pour appairage optimal
- *
- * Exemple:
- *   Alice doit 100€ à Bob
- *   Bob doit 60€ à Charlie
- *   Charlie doit 30€ à Alice
- *
- *   Sans optimisation: 3 transactions
- *   Optimisé:
- *     - Compensation Alice-Charlie: -30€ = Alice doit maintenant 70€
- *     - Alice → Bob: 70€
- *     - Bob → Charlie: 30€
- *   Total: 2 transactions (économie de 33%)
+ * peer- to-peer
+ * get the high debitors and high creeditors and match them to optimize transactions
+ * so we dont makt tooo much transactions
  */
 class DebtOptimizationService
 {
     /**
      * Calcule les transactions optimisées pour une colocation.
-     *
-     * @param Collocation $collocation
-     * @param BalanceService $balanceService
-     * @return array
      */
     public function getOptimizedTransactions(Collocation $collocation, BalanceService $balanceService): array
     {
@@ -40,8 +22,8 @@ class DebtOptimizationService
         $memberBalances = $this->getMemberBalances($collocation, $balanceService);
 
         // Sépare créditeurs et débiteurs
-        $creditors = $this->filterCreditors($memberBalances);      // Solde > 0 (doivent payer)
-        $debtors = $this->filterDebtors($memberBalances);          // Solde < 0 (doivent recevoir)
+        $creditors = $this->filterCreditors($memberBalances);
+        $debtors = $this->filterDebtors($memberBalances);
 
         // Optimise et retourne les transactions
         return $this->optimizeTransactions($creditors, $debtors);
@@ -49,10 +31,6 @@ class DebtOptimizationService
 
     /**
      * Récupère les balances de tous les membres actifs.
-     *
-     * @param Collocation $collocation
-     * @param BalanceService $balanceService
-     * @return Collection
      */
     private function getMemberBalances(Collocation $collocation, BalanceService $balanceService): Collection
     {
@@ -71,10 +49,6 @@ class DebtOptimizationService
 
     /**
      * Filtre les créditeurs (membres qui doivent payer).
-     * Balance > 0 = doit payer
-     *
-     * @param Collection $memberBalances
-     * @return Collection
      */
     private function filterCreditors(Collection $memberBalances): Collection
     {
@@ -85,10 +59,6 @@ class DebtOptimizationService
 
     /**
      * Filtre les débiteurs (membres qui doivent recevoir).
-     * Balance < 0 = doit recevoir (inverse le signe)
-     *
-     * @param Collection $memberBalances
-     * @return Collection
      */
     private function filterDebtors(Collection $memberBalances): Collection
     {
@@ -99,14 +69,7 @@ class DebtOptimizationService
     }
 
     /**
-     * Algo d'optimisation des transactions (Greedy + compensation circulaire).
-     *
-     * Appairage: À chaque itération, on appaire le plus grand créditeur
-     * avec le plus grand débiteur et on réduit leurs balances.
-     *
-     * @param Collection $creditors
-     * @param Collection $debtors
-     * @return array
+     * Algo d'optimisation des transactions.
      */
     private function optimizeTransactions(Collection $creditors, Collection $debtors): array
     {

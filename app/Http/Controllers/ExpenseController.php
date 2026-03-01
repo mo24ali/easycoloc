@@ -30,7 +30,6 @@ class ExpenseController extends Controller
             ->with(['member', 'category'])
             ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
             ->when($month, function ($q) use ($month) {
-                // Filter by explicitly captured YYYY-MM
                 $parts = explode('-', $month);
                 if (count($parts) === 2) {
                     $q->whereYear('expense_date', $parts[0])
@@ -45,6 +44,7 @@ class ExpenseController extends Controller
         $categories = Category::orderBy('name')->get();
 
         // Calculate Category and Monthly Stats across the unfiltered base of the collocation using Collections
+        // Month and Categroy filters
         $allCollocationExpenses = $collocation->expenses()->with('category')->get();
 
         $categoryStats = $allCollocationExpenses->groupBy('category_id')->mapWithKeys(function ($group) {
@@ -170,8 +170,7 @@ class ExpenseController extends Controller
     }
 
     /**
-     * Mark a single expense_share as paid directly.
-     * Only the payer (debtor) of the share may do this.
+     * Mark a single expense_share as paid directly
      */
     public function markSharePaid(ExpenseShare $share): RedirectResponse
     {

@@ -15,7 +15,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Show the admin dashboard with stats and user management.
+     * Show the admin dashboard with stats and user management
      */
     public function dashboard(): View
     {
@@ -29,13 +29,13 @@ class AdminController extends Controller
     }
 
     /**
-     * Ban a user.
+     * Ban a user
      */
     public function ban(User $user): RedirectResponse
     {
-        if (!$this->adminService->banUser($user)) {
-            return back()->withErrors(['user' => 'Cannot ban an admin user.']);
-        }
+            if (!$this->adminService->banUser($user)) {
+                return back()->withErrors(['user' => 'Cannot ban an admin user.']);
+            }
 
         return back()->with('status', "{$user->name} has been banned.");
     }

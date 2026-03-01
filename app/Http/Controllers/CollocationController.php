@@ -19,7 +19,7 @@ use Illuminate\View\View;
 
 class CollocationController extends Controller
 {
-    /** 
+    /**
      * List collocations the authenticated user owns or belongs to.
      */
     public function index(): View
@@ -44,7 +44,6 @@ class CollocationController extends Controller
             ->orderByDesc('created_at')
             ->paginate(9);
 
-        //render the view with the result
         return view('collocation.index', compact('collocations'));
     }
 
@@ -98,7 +97,7 @@ class CollocationController extends Controller
         // Get detailed expense share information
         $expenseShares = $collocation->getExpenseShareDetails();
 
-        // ✅ Get optimized transaction suggestions using the greedy algorithm
+
         $optimizedTransactions = $debtOptimizationService->getOptimizedTransactions($collocation, $balanceService);
 
         return view('collocation.show', compact('collocation', 'expenseShares', 'optimizedTransactions'));
@@ -200,10 +199,10 @@ class CollocationController extends Controller
             ]);
         }
 
-       
+
         if ($collocation->owner_id === $user->id) {
             return back()->withErrors([
-                'leave' => 'You cannot leave while you are the owner. 
+                'leave' => 'You cannot leave while you are the owner.
                 Transfer ownership or cancel the collocation.',
             ]);
         }
