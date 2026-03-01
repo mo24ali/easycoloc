@@ -6,17 +6,12 @@ use App\Models\Collocation;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use App\Models\ExpenseShare;
 
 /**
- * Service pour gérer les départs et les retraits de membres.
- *
- * Règles métier:
- * - Si un membre quitte avec solde NÉGATIF (doit recevoir) → +1 reputation
- * - Si un membre quitte avec solde POSITIF (doit payer) → -1 reputation
- * - Si un owner retire un membre avec DETTE → la dette est imputée au owner
- * - Si un owner retire avec CRÉDIT → compensation automatique
- *
- * Les opérations doivent être transactionnelles
+ * 
+ * service dédié à le calcul de la reputation si balance <= 0  +1 sinon -1
+ * 
  */
 class CollocationCleanupService
 {
@@ -25,10 +20,7 @@ class CollocationCleanupService
     ) {
     }
 
-    /**
-     * Marque un utilisateur comme ayant quitté la colocation.
-     * Crée les paiements pour le règlement des dettes.
-     */
+  
     public function memberLeaves(Collocation $collocation, User $user): array
     {
         return DB::transaction(function () use ($collocation, $user) {
@@ -71,15 +63,13 @@ class CollocationCleanupService
         });
     }
 
-    /**
-     * Crée les paiements de règlement pour un utilisateur qui quitte.
-     */
+  
     private function createSettlementPayments(Collocation $collocation, User $user, float $balance): void
     {
         if ($balance <= 0)
             return;
 
-        // Récupère les personnes à qui l'utilisateur doit de l'argent
+       // recuperate the users whom the user owes money to
         $debts = DB::table('expense_share')
             ->join('expenses', 'expense_share.expense_id', '=', 'expenses.id')
             ->where('expense_share.payer_id', $user->id)
@@ -89,9 +79,9 @@ class CollocationCleanupService
             ->groupBy('expenses.member_id')
             ->get();
 
-        // Crée un paiement pour chaque dette
+        // create payments to each
         foreach ($debts as $debt) {
-            // Prevent creating duplicate pending settlements
+            // prevent ducplication of payments
             $exists = Payment::where('collocation_id', $collocation->id)
                 ->where('payer_id', $user->id)
                 ->where('receiver_id', $debt->receiver_id)
@@ -111,12 +101,12 @@ class CollocationCleanupService
     }
 
     /**
-     * Retire un membre de la colocation (action admin/owner).
+     * get a user out of the coloc
      */
     public function ownerRemovesMember(Collocation $collocation, User $memberToRemove): array
     {
         return DB::transaction(function () use ($collocation, $memberToRemove) {
-            // Calcule le solde du membre à retirer
+            // compute the balance
             $memberBalance = $this->balanceService->getMemberBalance($collocation, $memberToRemove->id);
 
             // Owner
@@ -133,26 +123,25 @@ class CollocationCleanupService
 
             // Gère la dette du membre
             if ($memberBalance > 0) {
-                // Le membre DOIT de l'argent → transférer au owner
+                
                 $details['debt_transferred'] = $memberBalance;
                 $details['action'] = 'debt_transferred';
                 $details['message'] = "Solde négatif de {$memberToRemove->name} (€{$memberBalance}) "
                     . "transféré au owner {$owner->name}";
 
-                // Owner doit maintenant payer cet argent à la place du membre
-                \App\Models\ExpenseShare::where('payer_id', $memberToRemove->id)
+                // the owner must pay the debt of the excluded member
+                ExpenseShare::where('payer_id', $memberToRemove->id)
                     ->where('payed', false)
                     ->whereHas('expense', fn($q) => $q->where('collocation_id', $collocation->id))
                     ->update(['payer_id' => $owner->id]);
 
             } elseif ($memberBalance < 0) {
-                // Le membre DOIT RECEVOIR → annulé (perte pour lui)
                 $details['action'] = 'credit_cancelled';
                 $details['message'] = "{$memberToRemove->name} avait €" . abs($memberBalance)
                     . " à recevoir, crédit annulé.";
 
-                // Les autres membres ne lui doivent plus rien
-                \App\Models\ExpenseShare::where('payed', false)
+                
+                ExpenseShare::where('payed', false)
                     ->whereHas('expense', fn($q) => $q->where('collocation_id', $collocation->id)->where('member_id', $memberToRemove->id))
                     ->update(['payed' => true]);
 
@@ -161,7 +150,7 @@ class CollocationCleanupService
                 $details['message'] = "{$memberToRemove->name} n'avait pas de dette.";
             }
 
-            // Applique la réputation
+            // update reputation score
             if ($memberBalance > 0) {
                 $memberToRemove->decrement('reputation_score');
                 $details['reputation_change'] = '-1';
@@ -173,7 +162,7 @@ class CollocationCleanupService
                 $details['reputation_change'] = '+1';
             }
 
-            // Marque comme parti
+            // mark as gone
             $collocation->members()->updateExistingPivot($memberToRemove->id, [
                 'left_at' => now(),
             ]);

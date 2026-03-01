@@ -16,8 +16,6 @@ class User extends Authenticatable
 
     /**
      * The attributes that are mass assignable.
-     *
-     * @var list<string>
      */
     protected $fillable = [
         'name',
@@ -29,9 +27,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
+     * The attributes that should be hidden for serialization
      */
     protected $hidden = [
         'password',
@@ -52,7 +48,6 @@ class User extends Authenticatable
         ];
     }
 
-    // ─── Role helpers ─────────────────────────────────────────────────────────
 
     public function isAdmin(): bool
     {
@@ -78,10 +73,9 @@ class User extends Authenticatable
         return $this->role === 'user' ;
     }
 
-    // ─── Relatinships ────────────────────────────────────────────────────────
 
     /**
-     * Collocations this user owns (as 'owner').
+     * collocations this user owns (as 'owner')
      */
     public function ownedCollocations(): HasMany
     {
@@ -89,7 +83,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Collocations this user belongs to as a member (many-to-many).
+     * Collocations this user belongs to as a member (many-to-many)
      */
     public function collocations(): BelongsToMany
     {
@@ -99,7 +93,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Invitations sent by this user.
+     * Invitations sent by this user
      */
     public function sentInvitations(): HasMany
     {

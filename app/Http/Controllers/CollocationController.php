@@ -200,11 +200,11 @@ class CollocationController extends Controller
             ]);
         }
 
-        // Admin override check: if user is admin and is the owner, they can leave but they should transfer ownership or cancel really.
-        // Actually, if an admin becomes owner, the constraint applies. 
+       
         if ($collocation->owner_id === $user->id) {
             return back()->withErrors([
-                'leave' => 'You cannot leave while you are the owner. Transfer ownership or cancel the collocation.',
+                'leave' => 'You cannot leave while you are the owner. 
+                Transfer ownership or cancel the collocation.',
             ]);
         }
 

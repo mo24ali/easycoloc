@@ -30,7 +30,6 @@ class Invitation extends Model
         ];
     }
 
-    // ─── Business logic ────────────────────────────────────────────────────────
 
     public function isExpired(): bool
     {
@@ -47,17 +46,11 @@ class Invitation extends Model
         return $this->isPending() && !$this->isExpired();
     }
 
-    /**
-     * Accept invitation and add user to collocation.
-     *
-     * NOTE: This now requires MembershipService validation before calling.
-     * The InvitationController.accept() method will validate multi-colocation constraints.
-     */
+   
     public function accept(int $userId): void
     {
         $this->update(['status' => 'accepted', 'accepted_at' => now()]);
 
-        // Attach user to collocation if not already a member
         $collocation = $this->collocation;
         if (!$collocation->members()->where('user_id', $userId)->exists()) {
             $collocation->members()->attach($userId, ['joined_at' => now()]);
@@ -69,8 +62,6 @@ class Invitation extends Model
             $user->update(['role' => 'member']);
         }
     }
-
-    // ─── Relationships ────────────────────────────────────────────────────────
 
     public function collocation(): BelongsTo
     {
