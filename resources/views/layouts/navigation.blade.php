@@ -26,7 +26,7 @@
                     @endif
 
                     {{-- Owner-only route --}}
-                    @if(Auth::user()->isOwner() || Auth::user()->isNormalUser() || Auth::user()->isAdmin())
+                    @if(Auth::user()->isOwner() || Auth::user()->isNormalUser() || Auth::user()->isAdmin() )
                         <x-nav-link :href="route('collocation.create')" :active="request()->routeIs('collocation.create')">
                             {{ __('New Collocation') }}
                         </x-nav-link>
