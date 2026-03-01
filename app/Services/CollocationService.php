@@ -27,27 +27,27 @@ class CollocationService
             $oldOwnerId = $collocation->owner_id;
             $oldOwner = User::find($oldOwnerId);
 
-            // 1. Update Collocation owner
+            //  Update Collocation owner
             $collocation->update(['owner_id' => $newOwner->id]);
 
-            // 2. Update new owner pivot role
+            //  Update new owner pivot role
             $collocation->members()->updateExistingPivot($newOwner->id, [
                 'role' => 'owner'
             ]);
 
-            // 3. Update old owner pivot role
+            // Update old owner pivot role
             if ($oldOwner) {
                 $collocation->members()->updateExistingPivot($oldOwnerId, [
                     'role' => 'member'
                 ]);
 
-                // 4. Update old owner User model role if they don't own any other collocations
+                // Update old owner User model role if they don't own any other collocations
                 if (!$oldOwner->ownedCollocations()->exists() && !$oldOwner->isAdmin()) {
                     $oldOwner->update(['role' => 'member']);
                 }
             }
 
-            // 5. Update new owner User model role
+            // Update new owner User model role
             if (!$newOwner->isAdmin()) {
                 $newOwner->update(['role' => 'owner']);
             }

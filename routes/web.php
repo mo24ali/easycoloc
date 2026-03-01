@@ -46,6 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/collocations/{collocation}/payments', [PaymentController::class, 'index'])->name('payment.index');
         Route::get('/collocations/{collocation}/payments/create', [PaymentController::class, 'create'])->name('payment.create');
         Route::post('/collocations/{collocation}/payments', [PaymentController::class, 'store'])->name('payment.store');
+        // to be completed
         Route::post('/payments/{payment}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
         Route::post('/payments/{payment}/complete', [PaymentController::class, 'complete'])->name('payment.complete');
         Route::post('/payments/{payment}/reject', [PaymentController::class, 'reject'])->name('payment.reject');

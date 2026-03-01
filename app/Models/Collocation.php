@@ -39,26 +39,8 @@ class Collocation extends Model
     }
 
 
-    /**
-     * Sum of all expenses paid by a specific member in this collocation.*/
-    public function getTotalSpentByMember(int $userId): float
-    {
-        return (float) $this->expenses()
-            ->where('member_id', $userId)
-            ->sum('amount');
-    }
 
-    /**
-     * Net balance for a member.
-     */
-    public function getMemberBalance(int $userId): float
-    {
-        $totalExpenses = (float) $this->expenses()->sum('amount');
-        $memberCount = $this->members()->wherePivotNull('left_at')->count();
-        $memberShare = $memberCount > 0 ? $totalExpenses / $memberCount : 0;
-        $memberPaid = $this->getTotalSpentByMember($userId);
-        return round($memberShare - $memberPaid, 2);
-    }
+
 
     /**
      * Get detailed expense share breakdown.

@@ -70,7 +70,7 @@ class User extends Authenticatable
     }
     public function isNormalUser(): bool
     {
-        return $this->role === 'user' ;
+        return $this->role === 'user';
     }
 
 
@@ -92,35 +92,5 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    /**
-     * Invitations sent by this user
-     */
-    public function sentInvitations(): HasMany
-    {
-        return $this->hasMany(Invitation::class, 'sender_id');
-    }
 
-    /**
-     * Expenses added by this user.
-     */
-    public function expenses(): HasMany
-    {
-        return $this->hasMany(Expense::class, 'member_id');
-    }
-
-    /**
-     * Payments this user made (as payer).
-     */
-    public function paymentsAsPayer(): HasMany
-    {
-        return $this->hasMany(Payment::class, 'payer_id');
-    }
-
-    /**
-     * Payments this user is set to receive.
-     */
-    public function paymentsAsReceiver(): HasMany
-    {
-        return $this->hasMany(Payment::class, 'receiver_id');
-    }
 }

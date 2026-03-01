@@ -8,7 +8,7 @@ use App\Models\Collocation;
 class BalanceService
 {
     /**
-     * Calcule le total payé par un membre dans une colocation.
+     * Calculates the total amount paid by a member in a collocation.
      */
     public function getTotalSpentByMember(Collocation $collocation, int $userId): float
     {
@@ -18,16 +18,16 @@ class BalanceService
     }
 
     /**
-     * Obtient le nombre de membres actifs dans une colocation.
-     * Inclut le propri\u00e9taire m\u00eame s'il n'est pas dans la table members.
-     * */
+     * Gets the number of active members in a collocation.
+     * Includes the owner even if they are not in the members table.
+     */
     public function getActiveMemberCount(Collocation $collocation): int
     {
         $activeMembers = $collocation->members()
             ->wherePivotNull('left_at')
             ->count();
 
-        // Si le propri\u00e9taire n'est pas dans les membres, l'ajouter au compte
+        // If the owner is not in the members, add them to the count
         $ownerId = $collocation->owner_id;
         $isOwnerInMembers = $collocation->members()
             ->wherePivotNull('left_at')
@@ -42,7 +42,7 @@ class BalanceService
     }
 
     /**
-     * Calcule le total de toutes les dépenses de la colocation.
+     * Calculates the total expenses of the collocation.
      */
     public function getTotalExpenses(Collocation $collocation): float
     {
@@ -50,7 +50,7 @@ class BalanceService
     }
 
     /**
-     * Calcule la part individuelle d'un membre.
+     * Calculates the individual share for a member.
      */
     public function getIndividualShare(Collocation $collocation): float
     {
@@ -61,7 +61,7 @@ class BalanceService
     }
 
     /**
-     * Calcule le solde NET d'un membre dans la colocation.
+     * Calculates the NET balance for a member in the collocation.
      */
     public function getMemberBalance(Collocation $collocation, int $userId): float
     {
@@ -69,45 +69,5 @@ class BalanceService
         $totalSpent = $this->getTotalSpentByMember($collocation, $userId);
 
         return round($individualShare - $totalSpent, 2);
-    }
-
-    /**
-     * Obtient les détails complets des shares pour tous les membres.
-     */
-    public function getDetailedSharesWithBalance(Collocation $collocation): array
-    {
-        $shareDetails = $collocation->getExpenseShareDetails();
-        $result = [];
-
-        foreach ($shareDetails as $userShare) {
-            $userId = $userShare['user_id'];
-            $balance = $this->getMemberBalance($collocation, $userId);
-
-            $result[] = [
-                'user_id' => $userId,
-                'user_name' => $userShare['user_name'],
-                'balance' => $balance,
-                'shares' => $userShare['shares'],
-            ];
-        }
-
-        return $result;
-    }
-
-    /**
-     * Obtient les statistiques globales de la colocation.
-     */
-    public function getStatistics(Collocation $collocation): array
-    {
-        $totalExpenses = $this->getTotalExpenses($collocation);
-        $activeMemberCount = $this->getActiveMemberCount($collocation);
-        $individualShare = $this->getIndividualShare($collocation);
-
-        return [
-            'total_expenses' => $totalExpenses,
-            'active_member_count' => $activeMemberCount,
-            'individual_share' => $individualShare,
-            'average_per_member' => $activeMemberCount > 0 ? $totalExpenses / $activeMemberCount : 0,
-        ];
     }
 }

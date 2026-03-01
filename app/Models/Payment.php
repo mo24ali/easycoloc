@@ -72,13 +72,5 @@ class Payment extends Model
         return $this->status === 'cancelled';
     }
 
-    public function isPendingReceiverConfirmation(): bool
-    {
-        return $this->status === 'pending';
-    }
 
-    public function isPendingPayment(): bool
-    {
-        return $this->status === 'confirmed';
-    }
 }

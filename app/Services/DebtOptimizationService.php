@@ -6,31 +6,31 @@ use App\Models\Collocation;
 use Illuminate\Support\Collection;
 
 /**
- * Service pour l'optimisation des transactions de remboursement.
- * peer- to-peer
- * get the high debitors and high creeditors and match them to optimize transactions
- * so we dont makt tooo much transactions
+ * Service for optimizing settlement transactions.
+ * peer-to-peer 
+ * get the high debtors and high creditors and match them to optimize transactions
+ * so we don't make too many transactions
  */
 class DebtOptimizationService
 {
     /**
-     * Calcule les transactions optimisées pour une colocation.
+     * Calculates optimized transactions for a collocation.
      */
     public function getOptimizedTransactions(Collocation $collocation, BalanceService $balanceService): array
     {
-        // Récupère tous les membres actifs avec leurs balances
+        // Retrieve all active members with their balances
         $memberBalances = $this->getMemberBalances($collocation, $balanceService);
 
-        // Sépare créditeurs et débiteurs
+        // Separate creditors and debtors
         $creditors = $this->filterCreditors($memberBalances);
         $debtors = $this->filterDebtors($memberBalances);
 
-        // Optimise et retourne les transactions
+        // Optimize and return transactions
         return $this->optimizeTransactions($creditors, $debtors);
     }
 
     /**
-     * Récupère les balances de tous les membres actifs.
+     * Retrieve balances for all active members.
      */
     private function getMemberBalances(Collocation $collocation, BalanceService $balanceService): Collection
     {
@@ -44,11 +44,11 @@ class DebtOptimizationService
                 'name' => $member->name,
                 'balance' => $balanceService->getMemberBalance($collocation, $member->id),
             ];
-        })->filter(fn($member) => $member['balance'] != 0); // Exclut les soldes = 0
+        })->filter(fn($member) => $member['balance'] != 0); // Exclude zero balances
     }
 
     /**
-     * Filtre les créditeurs (membres qui doivent payer).
+     * Filter creditors (members who need to pay).
      */
     private function filterCreditors(Collection $memberBalances): Collection
     {
@@ -58,7 +58,7 @@ class DebtOptimizationService
     }
 
     /**
-     * Filtre les débiteurs (membres qui doivent recevoir).
+     * Filter debtors (members who need to receive).
      */
     private function filterDebtors(Collection $memberBalances): Collection
     {
@@ -69,7 +69,7 @@ class DebtOptimizationService
     }
 
     /**
-     * Algo d'optimisation des transactions.
+     * Transaction optimization algorithm.
      */
     private function optimizeTransactions(Collection $creditors, Collection $debtors): array
     {
@@ -78,15 +78,15 @@ class DebtOptimizationService
         $debtorsList = $debtors->toArray();
 
         while (!empty($creditorsList) && !empty($debtorsList)) {
-            // Prend le premier créditeur et débiteur
+            // Take the first creditor and debtor
             $creditor = &$creditorsList[0];
             $debtor = &$debtorsList[0];
 
-            // Calcule le montant à transférer (le min des deux)
+            // Calculate the amount to transfer (the minimum of the two)
             $amount = min($creditor['balance'], $debtor['balance']);
             $amount = round($amount, 2);
 
-            // Enregistre la transaction
+            // Record the transaction
             $transactions[] = [
                 'payer_id' => $creditor['id'],
                 'payer_name' => $creditor['name'],
@@ -95,11 +95,11 @@ class DebtOptimizationService
                 'amount' => $amount,
             ];
 
-            // Réduit les balances
+            // Reduce balances
             $creditorsList[0]['balance'] = round($creditorsList[0]['balance'] - $amount, 2);
             $debtorsList[0]['balance'] = round($debtorsList[0]['balance'] - $amount, 2);
 
-            // Retire ceux dont la balance est = 0
+            // Remove those whose balance is zero
             if ($creditorsList[0]['balance'] <= 0.01) {
                 array_shift($creditorsList);
             }
