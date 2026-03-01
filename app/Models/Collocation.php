@@ -90,20 +90,6 @@ class Collocation extends Model
         return $result;
     }
 
-    /**
-     * Minimal-transaction reimbursement suggestions based on expense shares
-     */
-
-
-    // ─── Scopes ──────────────────────────────────────────────────────────────
-
-    public function scopeActive($query)
-    {
-        return $query->whereNull('cancelled_at');
-    }
-
-    // ─── Relationships ────────────────────────────────────────────────────────
-
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
