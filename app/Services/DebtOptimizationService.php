@@ -44,7 +44,7 @@ class DebtOptimizationService
                 'name' => $member->name,
                 'balance' => $balanceService->getMemberBalance($collocation, $member->id),
             ];
-        })->filter(fn($member) => $member['balance'] != 0); // Exclude zero balances
+        })->filter(fn($member) => $member['balance'] != 0); 
     }
 
     /**
